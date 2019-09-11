@@ -6,13 +6,13 @@ from warp import picmi
 # physics parameters
 ##########################
 
-mysolver = 'ES' # solver type ('ES'=electrostatic; 'EM'=electromagnetic)
+mysolver = 'EM' # solver type ('ES'=electrostatic; 'EM'=electromagnetic)
 
 # --- Beam
 unit = 1e-3
 
-beam_density = 1.e16
-beam_uz = 100.
+beam_density = 1.e5
+beam_uz = 0.1
 beam_xmin = -30.*unit
 beam_xmax = +30.*unit
 beam_ymin = -30.*unit
@@ -35,14 +35,14 @@ ny = 100/2
 nz = 100/2
 
 max_z = 659.9*unit
-l_main_x = 248*unit
-l_main_y = 350*unit
-l_main_z = 300*unit
+l_main_y = 242*unit
+l_main_x = 300*unit
+l_main_z = 350*unit
 l_beam_pipe = 84*unit
 l_int = 62*unit
-l_main_int_x = l_main_x - 0.5*l_beam_pipe
+l_main_int_y = l_main_y - 0.5*l_beam_pipe
 l_main_int_z = 0.5*l_main_z - l_int
-l_main_int_y = 0.5*l_main_y - l_int
+l_main_int_x = 0.5*l_main_x - l_int
 
 xmin = -0.5*l_main_x
 xmax = 0.5*l_main_x
@@ -69,7 +69,6 @@ parabolic_beam = picmi.AnalyticDistribution(density_expression = "beam_density*n
                                             upper_bound = [beam_xmax, beam_ymax, beam_zmax],
                                             directed_velocity = [0., 0., beam_uz])
 
-
 # parabolic_beam = None#picmi.ParticleListDistribution(x=0.,y=0.,z=0.,
 # #                 ux=0.,uy=0.,uz=beam_uz*picmi.warp.clight,
 # #                 weight=1.)
@@ -77,7 +76,8 @@ parabolic_beam = picmi.AnalyticDistribution(density_expression = "beam_density*n
 beam = picmi.Species(particle_type = 'proton',
                      particle_shape = 'linear',
                      name = 'beam',
-                     mass = 1.e10,
+                     mass = 1.6726219e-27,
+                     charge = 1.60217662081e-19,
                      initial_distribution = parabolic_beam)
 
 # 
@@ -150,7 +150,6 @@ if mysolver=='EM':
 #                                                  species = [electrons, ions, beam],
 #                                                  write_dir = 'lab_diags')
 
-
 ##########################
 # simulation setup
 ##########################
@@ -160,10 +159,10 @@ box1 = picmi.warp.Box(zsize=zmax-zmin, xsize=xmax-xmin,ysize=ymax-ymin)
 box2 = picmi.warp.Box(zsize=zmax-zmin, xsize=l_beam_pipe,ysize=l_beam_pipe)
 box3 = picmi.warp.Box(zsize=l_main_z, xsize=l_main_x,ysize=l_main_y)
 # Boxes for the poles
-xcen1 = 0.5*(l_beam_pipe+l_main_int_x)
-xcen2 = -xcen1
-box4 = picmi.warp.Box(zsize=l_main_int_z, xsize=l_main_int_x, ysize=l_main_int_y, xcent=xcen1)
-box5 = picmi.warp.Box(zsize=l_main_int_z, xsize=l_main_int_x, ysize=l_main_int_y, xcent=xcen2)
+ycen1 = 0.5*(l_beam_pipe+l_main_int_y)
+ycen2 = -ycen1
+box4 = picmi.warp.Box(zsize=l_main_int_z, xsize=l_main_int_x, ysize=l_main_int_y, ycent=ycen1)
+box5 = picmi.warp.Box(zsize=l_main_int_z, xsize=l_main_int_x, ysize=l_main_int_y, ycent=ycen2)
 
 sim = picmi.Simulation(solver = solver,
                        max_steps = max_steps,
@@ -175,6 +174,81 @@ sim.conductors = box1-box2-box3+box4+box5
 
 sim.add_species(beam, layout=picmi.GriddedLayout(grid=grid, n_macroparticle_per_cell=beam_number_per_cell_each_dim),
                                                  initialize_self_field = solver=='EM')
+
+##########################
+# Insert ext fields by adding lattice
+##########################
+
+############# READ GRID DATA FROM FILE
+#### Get great data at mesh nodes
+
+[x,y,z,Ex,Ey,Ez] = picmi.getdatafromtextfile("efield.txt",nskip=1,dims=[6,None])
+[_,_,_,Hx,Hy,Hz] = picmi.getdatafromtextfile("hfield.txt",nskip=1,dims=[6,None])
+Bx = picmi.mu0*Hx
+By = picmi.mu0*Hy
+Bz = picmi.mu0*Hz
+
+### Interpolate them at cell centers
+d = abs(x[1]-x[0])
+#number of mesh cells
+Nx = int(2*max(x)/d-1)
+Ny = int(2*max(y)/d-1)
+Nz = int(2*max(z)/d-1)
+#number of mesh vertices
+nx = int(2*max(x)/d)
+ny = int(2*max(y)/d)
+nz = int(2*max(z)/d)
+
+xx = np.zeros([Nx,Ny,Nz],'d')
+yy = np.zeros([Nx,Ny,Nz],'d')
+zz = np.zeros([Nx,Ny,Nz],'d')
+Exx = np.zeros([Nx,Ny,Nz],'d')
+Eyy = np.zeros([Nx,Ny,Nz],'d')
+Ezz = np.zeros([Nx,Ny,Nz],'d')
+Bxx = np.zeros([Nx,Ny,Nz],'d')
+Byy = np.zeros([Nx,Ny,Nz],'d')
+Bzz = np.zeros([Nx,Ny,Nz],'d')
+
+for i in range(Nx):
+    for j in range(Ny):
+        for k in range(Nz):
+            ### Get the coords of the cell centers
+            xx[i,j,k] = x[i+nx*j+(nx+ny)*k]+x[(i+1)+nx*j+(nx+ny)*k]
+            yy[i,j,k] = y[i+nx*j+(nx+ny)*k]+y[i+nx*(j+1)+(nx+ny)*k]
+            zz[i,j,k] = z[i+nx*j+(nx+ny)*k]+z[i+nx*j+(nx+ny)*(k+1)]
+            ### Get the fields at the cell centers
+            for ii in [i,i+1]:
+                for jj in [j,j+1]:
+                    for kk in [k,k+1]:
+                        Exx[i,j,k] += Ex[ii+nx*jj+(nx+ny)*kk]
+                        Eyy[i,j,k] += Ey[ii+nx*jj+(nx+ny)*kk]
+                        Ezz[i,j,k] += Ez[ii+nx*jj+(nx+ny)*kk]
+                        Bxx[i,j,k] += Bx[ii+nx*jj+(nx+ny)*kk]
+                        Byy[i,j,k] += By[ii+nx*jj+(nx+ny)*kk]
+                        Bzz[i,j,k] += Bz[ii+nx*jj+(nx+ny)*kk]
+xx *= 0.5
+yy *= 0.5
+zz *= 0.5
+#Exx *= 0.125
+#Eyy *= 0.125
+#Ezz *= 0.125
+#Bxx *= 0.125
+#Byy *= 0.125
+#Bzz *= 0.125
+
+zs = -l_main_z/2
+ze = l_main_z/2
+############# INITIALIZE PARAMETERS
+Tf = 25e-9
+Nt = 20
+time_array = np.linspace(0.,Tf,Nt)
+data_arrayE = np.sin(time_array/Tf*2*np.pi)
+data_arrayB = np.sin(time_array/Tf*2*np.pi-np.pi/2)
+############# CREATE THE OVERLAPPED LATTICE ELEMENTS
+picmi.addnewegrd(zs, ze, dx=d, dy=d, nx=Nx, ny=Ny, nz=Nz, time=time_array, data=data_arrayE,
+               ex=Exx, ey=Eyy, ez=Ezz)
+picmi.addnewbgrd(zs, ze, dx=d, dy=d, nx=Nx, ny=Ny, nz=Nz, time=time_array, data=data_arrayB,
+               bx=Bxx, by=Byy, bz=Bzz)
 
 # sim.add_diagnostic(field_diag)
 # #sim.add_diagnostic(part_diag)
