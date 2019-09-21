@@ -2,6 +2,8 @@ import numpy as np
 #from pywarpx import picmi
 from warp import picmi
 import matplotlib.pyplot as plt
+from scipy.stats import gaussian_kde
+
 ##########################
 # physics parameters
 ##########################
@@ -23,9 +25,9 @@ max_steps = 1#500
 
 nx = 100/2
 ny = 100/2
-nz = 100/2
+nz = 400/2
 
-max_z = 3000*unit
+max_z = 7000*unit
 l_main_y = 242*unit
 l_main_x = 300*unit
 l_main_z = 350*unit
@@ -45,18 +47,37 @@ zmax = 0.5*max_z
 beam_number_per_cell_each_dim = [1, 1, 1]
 
 ##########################
-# physics components
+# Beam parameters
 ##########################
 
 # --- beam
-beam_uz = 287
-bunch_physical_particles  = 1.15e11
-sigmax = 0.00017514074313652062*5
-sigmay = 0.00018021833789232512*5
-sigmaz = 7.55e-2
+beam_uz = 28.7
+bunch_physical_particles  = 0.8e11
+
+#######################################################
+# compute beam size from normalized emittance and beta
+# Uncomment if data available
+#######################################################
+'''
+enorm_x = 3.5e-7
+enorm_y = 3.5e-7
+beta_x = 40
+beta_y = 80
+gamma_rel = beam_uz
+beta_rel = 1/np.sqrt(1+1./(gamma_rel**2))
+egeom_x = enorm_x/(beta_rel*gamma_rel)
+egeom_y = enorm_y/(beta_rel*gamma_rel)
+sigmax = np.sqrt(egeom_x*beta_x)
+sigmay = np.sqrt(egeom_y*beta_y)
+'''
+
+sigmax = 1.85e-3
+sigmay = 1.85e-3
+
+sigmaz = 1.85e-1
 bunch_rms_size            = [sigmax, sigmay, sigmaz]
 bunch_rms_velocity        = [0.,0.,0.]
-bunch_centroid_position   = [0,0,-13.5*sigmaz]
+bunch_centroid_position   = [0,0,-8*sigmaz]
 bunch_centroid_velocity   = [0.,0.,beam_uz*picmi.constants.c]
 gauss_dist = picmi.GaussianBunchDistribution(
                                             n_physical_particles = bunch_physical_particles,
@@ -68,14 +89,11 @@ gauss_dist = picmi.GaussianBunchDistribution(
 beam = picmi.Species(particle_type = 'proton',
                      particle_shape = 'linear',
                      name = 'beam',
-                     #mass = 1.6726219e-27,
-                     #charge = 1.60217662081e-19,
-                     color='blue',
                      initial_distribution = gauss_dist)
 
 
 ##########################
-# numerics components
+# Numeric components
 ##########################
 
 if mysolver=='ES':
@@ -90,8 +108,8 @@ grid = picmi.Cartesian3DGrid(number_of_cells = [nx, ny, nz],
                              lower_bound = [xmin, ymin, zmin],
                              upper_bound = [xmax, ymax, zmax],
                              lower_boundary_conditions = lower_boundary_conditions,
-                             upper_boundary_conditions = upper_boundary_conditions,
-                             warpx_max_grid_size=32)
+                             upper_boundary_conditions = upper_boundary_conditions)#,
+#warpx_max_grid_size=32)
 
 if mysolver=='ES':
     solver = picmi.ElectrostaticSolver(grid = grid)
@@ -114,36 +132,12 @@ if mysolver=='EM':
 
 
 ##########################
-# diagnostics
-##########################
-
-# field_diag = picmi.FieldDiagnostic(grid = grid,
-#                                    period = 20,
-#                                    write_dir = 'diags')
-# 
-# part_diag = picmi.ParticleDiagnostic(period = 100,
-#                                      species = [electrons, ions, beam],
-#                                      write_dir = 'diags')
-# 
-# field_diag_lab = picmi.LabFrameFieldDiagnostic(grid = grid,
-#                                                num_snapshots = 20,
-#                                                dt_snapshots = 0.5*(zmax - zmin)/picmi.clight,
-#                                                data_list = ["rho", "E", "B", "J"],
-#                                                write_dir = 'lab_diags')
-# 
-# part_diag_lab = picmi.LabFrameParticleDiagnostic(grid = grid,
-#                                                  num_snapshots = 20,
-#                                                  dt_snapshots = 0.5*(zmax - zmin)/picmi.clight,
-#                                                  species = [electrons, ions, beam],
-#                                                  write_dir = 'lab_diags')
-
-##########################
-# simulation setup
+# Simulation setup
 ##########################
 box1 = picmi.warp.Box(zsize=zmax-zmin, xsize=xmax-xmin,ysize=ymax-ymin)
 box2 = picmi.warp.Box(zsize=zmax-zmin, xsize=l_beam_pipe,ysize=l_beam_pipe)
 box3 = picmi.warp.Box(zsize=l_main_z, xsize=l_main_x,ysize=l_main_y)
-# Boxes for the poles
+# Shape the cavity
 ycen1 = 0.5*(l_beam_pipe+l_main_int_y)
 ycen2 = -ycen1
 box4 = picmi.warp.Box(zsize=l_main_int_z, xsize=l_main_int_x, ysize=l_main_int_y, ycent=ycen1)
@@ -161,26 +155,25 @@ beam_layout = picmi.PseudoRandomLayout(n_macroparticles = 10**5, seed = 3)
 
 sim.add_species(beam, layout=beam_layout,
                 initialize_self_field = solver=='EM')
-##########################
-# Insert ext fields by adding lattice
-##########################
 
-############# READ GRID DATA FROM FILE
-#### Get great data at mesh nodes
+#####################################################
+# Insert RF fields by adding lattice components
+#####################################################
 
+### Get data at mesh nodes
 [x,y,z,Ex,Ey,Ez] = picmi.getdatafromtextfile("efield.txt",nskip=1,dims=[6,None])
 [_,_,_,Hx,Hy,Hz] = picmi.getdatafromtextfile("hfield.txt",nskip=1,dims=[6,None])
 Bx = Hx*picmi.mu0
 By = Hy*picmi.mu0
 Bz = Hz*picmi.mu0
 
-### Interpolate them at cell centers
+### Interpolate them at cell centers (how prescribed by Warp doc)
 d = abs(x[1]-x[0])
-#number of mesh cells
+### Number of mesh cells
 NNx = int(round(2*max(x)/d))
 NNy = int(round(2*max(y)/d))
 NNz = int(round(2*max(z)/d))
-#number of mesh vertices
+### Number of mesh vertices
 nnx = NNx+1
 nny = NNy+1
 nnz = NNz+1
@@ -198,11 +191,6 @@ Bzz = np.zeros([NNx,NNy,NNz],'d')
 for i in range(NNx):
     for j in range(NNy):
         for k in range(NNz):
-            ### Get the coords of the cell centers
-            #xx[i,j,k] = x[i+nnx*j+(nnx*nny)*k]+x[(i+1)+nnx*j+(nnx*nny)*k]
-            #yy[i,j,k] = y[i+nnx*j+(nnx*nny)*k]+y[i+nnx*(j+1)+(nnx*nny)*k]
-            #zz[i,j,k] = z[i+nnx*j+(nnx*nny)*k]+z[i+nnx*j+(nnx*nny)*(k+1)]
-            ### Get the fields at the cell centers
             for ii in [i,i+1]:
                 for jj in [j,j+1]:
                     for kk in [k,k+1]:
@@ -213,9 +201,6 @@ for i in range(NNx):
                         Byy[i,j,k] += By[ii+nnx*jj+(nnx*nny)*kk]
                         Bzz[i,j,k] += Bz[ii+nnx*jj+(nnx*nny)*kk]
 
-#xx *= 0.5
-#yy *= 0.5
-#zz *= 0.523
 Exx *= 0.125
 Eyy *= 0.125
 Ezz *= 0.125
@@ -223,23 +208,34 @@ Bxx *= 0.125
 Byy *= 0.125
 Bzz *= 0.125
 
+### Rescale the fields at convenience
+max = 57*1e6
+kk = -max/Eyy[32,25,141]
+
+Exx *= kk
+Eyy *= kk
+Ezz *= kk
+Bxx *= kk
+Byy *= kk
+Bzz *= kk
+
+### Lattice spatial parameters
 zs = -659.9*unit
 ze = 659.9*unit
 xs = -l_main_x/2 + d/2
 ys = -l_main_y/2 + d/2
-############# INITIALIZE PARAMETERS
+### Lattice temporal parameters
 Tf = 25e-9
 freq = 400*1e6
-Nt = 100
-def ss(t):
-    print(np.sin((t-4.5*sigmaz/picmi.warp.clight)*freq*2*np.pi))
+Nt = 1000
 
 time_array = np.linspace(0.,Tf,Nt)
-data_arrayE = np.sin((time_array-4.5*sigmaz/picmi.warp.clight)*freq*2*np.pi)
-data_arrayB = np.sin((time_array-4.5*sigmaz/picmi.warp.clight)*freq*2*np.pi-np.pi/2)
-############# CREATE THE OVERLAPPED LATTICE ELEMENTS
-ie,egrid = picmi.warp.addnewegrd(zs, ze, dx=d, dy=d, xs = xs, ys = ys, nx=NNx, ny=NNy, nz=NNz, time=time_array, data=data_arrayE,
-               ex=Exx, ey=Eyy, ez=Ezz)
+data_arrayE = np.sin((time_array-4*sigmaz/picmi.warp.clight)*freq*2*np.pi)
+data_arrayB = np.sin((time_array-4*sigmaz/picmi.warp.clight)*freq*2*np.pi-np.pi/2)
+
+### Create overlapped lattice elements to have E and B in the same region
+ie,egrid = picmi.warp.addnewegrd(zs, ze, dx=d, dy=d, xs = xs, ys = ys, nx=NNx, ny=NNy, nz=NNz, time=time_array,
+                                 data=data_arrayE, ex=Exx, ey=Eyy, ez=Ezz)
 
 picmi.warp.addnewbgrd(zs, ze, dx=d, dy=d, xs = xs, ys = ys, nx=NNx, ny=NNy, nz=NNz, time=time_array, data=data_arrayB,
            bx=Bxx, by=Byy, bz=Bzz)
@@ -248,17 +244,8 @@ picmi.warp.addnewbgrd(zs, ze, dx=d, dy=d, xs = xs, ys = ys, nx=NNx, ny=NNy, nz=N
 ##########################
 # simulation run
 ##########################
-
-# write_inputs will create an inputs file that can be used to run
-# with the compiled version.
-#sim.write_input_file(file_name = 'inputs_from_PICMI')
-
-# Alternatively, sim.step will run WarpX, controlling it from Python
-#sim.step(max_steps)
-
 sim.step(1)
 solver.solver.installconductor(sim.conductors, dfill = picmi.warp.largepos)
-
 sim.step(1)
 
 # define shortcuts
@@ -315,4 +302,40 @@ def myplots2(l_force=0):
 pw.installafterstep(myplots)
 
 myplots(ie,1)
-#step(10)
+
+
+########################
+# My plots
+########################
+#fig, axes = plt.subplots(nrows=1, ncols=2)
+#plt.subplot(1,2,1)
+#zz1 = pw.getz().copy()
+#yy1 = pw.gety().copy()
+#xy1 = np.vstack([zz1/pw.clight,yy1*1e3])
+#z1 = gaussian_kde(xy1)(xy1)
+#plt.scatter((zz1/pw.clight-np.mean(zz1/pw.clight))*1e9, yy1*1e3 -  np.mean(yy1*1e3),
+#        c=z1/np.max(z1), cmap='jet',  s=100, edgecolor='')
+#plt.xlim(-1.2,1.2)
+#plt.ylim(-6,6)
+#plt.xlabel('t [ns]')
+#plt.ylabel('y [mm]')
+
+step(90)
+
+#plt.subplot(1,2,2)
+zz2 = pw.getz().copy()
+yy2 = pw.gety().copy()
+xy2 = np.vstack([zz2/pw.clight,yy2*1e3])
+z2 = gaussian_kde(xy2)(xy2)
+sc = plt.scatter((zz2/pw.clight-np.mean(zz2/pw.clight))*1e9, yy2*1e3 -  np.mean(yy2*1e3),
+            c=z2/np.max(z2), cmap='jet',  s=100, edgecolor='')
+plt.xlim(-1.2,1.2)
+plt.ylim(-6,6)
+plt.xlabel('t [ns]')
+
+#fig.subplots_adjust(right=0.8)
+#cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
+#fig.colorbar(sc, cax=cbar_ax)
+plt.colorbar()
+plt.show()
+
