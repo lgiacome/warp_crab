@@ -71,13 +71,13 @@ sigmax = np.sqrt(egeom_x*beta_x)
 sigmay = np.sqrt(egeom_y*beta_y)
 '''
 
-sigmax = 1.85e-3
-sigmay = 1.85e-3
+sigmax = 2e-3
+sigmay = 2e-3
 
-sigmaz = 1.85e-1
+sigmaz = 2.2484435e-1
 bunch_rms_size            = [sigmax, sigmay, sigmaz]
 bunch_rms_velocity        = [0.,0.,0.]
-bunch_centroid_position   = [0,0,-8*sigmaz]
+bunch_centroid_position   = [0,0,-picmi.clight*2.5e-9*2]
 bunch_centroid_velocity   = [0.,0.,beam_uz*picmi.constants.c]
 gauss_dist = picmi.GaussianBunchDistribution(
                                             n_physical_particles = bunch_physical_particles,
@@ -228,10 +228,10 @@ ys = -l_main_y/2 + d/2
 Tf = 25e-9
 freq = 400*1e6
 Nt = 1000
-
+phase_disp=0
 time_array = np.linspace(0.,Tf,Nt)
-data_arrayE = np.sin((time_array-4*sigmaz/picmi.warp.clight)*freq*2*np.pi)
-data_arrayB = np.sin((time_array-4*sigmaz/picmi.warp.clight)*freq*2*np.pi-np.pi/2)
+data_arrayE = np.sin(time_array*freq*2*np.pi+phase_disp)
+data_arrayB = np.sin(time_array*freq*2*np.pi-np.pi/2+phase_disp)
 
 ### Create overlapped lattice elements to have E and B in the same region
 ie,egrid = picmi.warp.addnewegrd(zs, ze, dx=d, dy=d, xs = xs, ys = ys, nx=NNx, ny=NNy, nz=NNz, time=time_array,
@@ -265,19 +265,19 @@ def myplots(ie=0, l_force=0):
         em.installconductor(sim.conductors, dfill = picmi.warp.largepos)
     if l_force or pw.top.it%1==0:
         pw.fma()
-        if mysolver=='ES':
-            solver.solver.pcphizx(filled=1,view=3,titles=0)
-            beam.wspecies.ppzx(msize=2,color='red')
-            pw.limits(zmin,zmax,xmin,xmax)
-            solver.solver.pcphizy(filled=1,view=4,titles=0)
-            beam.wspecies.ppzy(msize=2,color='red')
-            pw.limits(zmin,zmax,ymin,ymax)
-            solver.solver.pcphixy(filled=1,view=5,titles=0)
-            beam.wspecies.ppxy(msize=2,color='red')
-            pw.limits(xmin,xmax,ymin,ymax)
-            pw.plotegrd(ie,component = 'y', iz = 0, view = 6)
+        if 1==1: #mysolver=='ES':
+            #solver.solver.pcphizx(filled=1,view=3,titles=0)
+            #beam.wspecies.ppzx(filled=1,view=3,msize=2,color='red')
+            #pw.limits(zmin,zmax,xmin,xmax)
+            #solver.solver.pcphizy(filled=1,view=4,titles=0)
+            beam.wspecies.ppzy(filled=1,msize=1,color='red',width=3)
+            pw.limits(np.min(pw.getz()),np.max(pw.getz()),np.min(pw.gety()),np.max(pw.gety()))
+            #solver.solver.pcphixy(filled=1,view=5,titles=0)
+            #beam.wspecies.ppxy(filled=1,view=5,msize=2,color='red')
+        #pw.limits(xmin,xmax,ymin,ymax)
+        #pw.plotegrd(ie,component = 'y', iz = 0, view = 6)
         
-        if mysolver=='EM':
+        if 1==0: #mysolver=='EM':
             solver.solver.pfex(direction=1,l_transpose=1,view=9)
             solver.solver.pfez(direction=1,l_transpose=1,view=10)
         pw.refresh()
@@ -307,22 +307,27 @@ myplots(ie,1)
 ########################
 # My plots
 ########################
-#fig, axes = plt.subplots(nrows=1, ncols=2)
-#plt.subplot(1,2,1)
-#zz1 = pw.getz().copy()
-#yy1 = pw.gety().copy()
-#xy1 = np.vstack([zz1/pw.clight,yy1*1e3])
-#z1 = gaussian_kde(xy1)(xy1)
-#plt.scatter((zz1/pw.clight-np.mean(zz1/pw.clight))*1e9, yy1*1e3 -  np.mean(yy1*1e3),
-#        c=z1/np.max(z1), cmap='jet',  s=100, edgecolor='')
-#plt.xlim(-1.2,1.2)
-#plt.ylim(-6,6)
-#plt.xlabel('t [ns]')
-#plt.ylabel('y [mm]')
+'''
+fig, axes = plt.subplots(nrows=1, ncols=2)
+plt.subplot(1,2,1)
+zz1 = pw.getz().copy()
+yy1 = pw.gety().copy()
+xy1 = np.vstack([zz1/pw.clight,yy1*1e3])
+z1 = gaussian_kde(xy1)(xy1)
+plt.scatter((zz1/pw.clight-np.mean(zz1/pw.clight))*1e9, yy1*1e3 -  np.mean(yy1*1e3),
+        c=z1/np.max(z1), cmap='jet',  s=100, edgecolor='')
+plt.xlim(-1.2,1.2)
+plt.ylim(-6,6)
+plt.xlabel('t [ns]')
+plt.ylabel('y [mm]')
 
-step(90)
+if mysolver == 'EM':
+    step(650)
+if mysolver == 'ES':
+    step(100)
 
 #plt.subplot(1,2,2)
+
 zz2 = pw.getz().copy()
 yy2 = pw.gety().copy()
 xy2 = np.vstack([zz2/pw.clight,yy2*1e3])
@@ -332,10 +337,11 @@ sc = plt.scatter((zz2/pw.clight-np.mean(zz2/pw.clight))*1e9, yy2*1e3 -  np.mean(
 plt.xlim(-1.2,1.2)
 plt.ylim(-6,6)
 plt.xlabel('t [ns]')
+plt.ylabel('y [mm]')
 
 #fig.subplots_adjust(right=0.8)
 #cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
 #fig.colorbar(sc, cax=cbar_ax)
 plt.colorbar()
 plt.show()
-
+'''
