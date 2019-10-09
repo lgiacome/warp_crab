@@ -271,7 +271,7 @@ def myplots(ie=0, l_force=0):
             #pw.limits(zmin,zmax,xmin,xmax)
             #solver.solver.pcphizy(filled=1,view=4,titles=0)
             beam.wspecies.ppzy(filled=1,msize=1,color='red',width=3)
-            pw.limits(np.min(pw.getz()),np.max(pw.getz()),np.min(pw.gety()),np.max(pw.gety()))
+            pw.limits(np.min(pw.getz()),np.max(pw.getz()),ymin,ymax)
             #solver.solver.pcphixy(filled=1,view=5,titles=0)
             #beam.wspecies.ppxy(filled=1,view=5,msize=2,color='red')
         #pw.limits(xmin,xmax,ymin,ymax)
