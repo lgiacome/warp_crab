@@ -1,0 +1,146 @@
+LHC injection energy
+1 modepos
+1234567         random no. seed
+1  1.100000e+11  4.500000e+11    iptype, xnpnom, beamen
+1  iden_xy      transv. bunch density profile (1=gaussian)
+0.000015  0.000015     transv. bunch sigmas: sigx, sigy
+1  iden_z  long. bunch density profile (1=guassian)
+-2.5e-11    rkicks (<0 means time step delta_t in seconds)
+0.092  longit. bunch density  sigz [m]
+6.4   blensig = (full bunch length)/sigz
+! next line is the fill pattern file; make sure it exists in subdirectory Auxil_files
+LHCfill_25ns_72bx5
+26659   35570   circumf [m] and harmonic no.
+
+! external B-field:
+1   1.0  ibfieldtype, slength (ibfieldtype=1: unif. B-field; slength [m]=length)
+0, 0.5355 ,0   Bfx, Bfy, Bfz [T]
+10, 0   nstint, iadapt (no. integration steps per time step; adaptive time step: yes)
+
+! chamber cross-section shape (ichsh=2: rectangular)
+23e-03  18e-03  0  0 2  ach,bch,hch1,hch2,ichsh
+
+! photoemission stuff
+7  5   1     ek0phel,eksigphel,pangphel
+1 modephel : the "uniform" portion of the incident photon distribution is such that dN/d(phi)=constant
+  5e-3  5e-3  1.0  0.    sigyphel1,sigyphel2,refleff,fracgaus1
+1.619571e-04  1.0     photpbppm, queffp
+
+! ionization electrons
+ 300 100  50 2e6 0   temperature,ekinionel,esigionel,crossect,pressure
+
+! particle-loss electrons
+ 5  5  1  1     ek0plel,eksigplel,idisplel,pangplel
+ 0   100     plossratepbppm,plelyield
+
+! macro-electron stuff
+ 100, 0, 0  macrophel, macroionel, macroplel
+
+! secondary electron emission stuff
+ 1 matsurf
+
+!    Changed by config_scan.py
+276.8  1.5369  1.54  4  E0tspk, dtspk, powts, iprob
+0.66 0.8 0.7 1 0 0 tpar1-tpar6
+1.5 1.75 1 3.75 8.5 11.5 2.5 3 2.5 3 enpar
+2.5 3.3 2.5 2.5 2.8 1.3 1.5 1.5 1.5 1.5 pnpar
+0.02 0.5 0 61 1 0.26 2 2 P1einf,P1epk,E0epk,E0w,powe,epar1,epar2,sige
+0.041 0.16309 0.1 0.26 2 0.5 Ecr, P1rinf, qr, rpar1, rpar2, pr
+
+!    Eric Wulff adapted from N. Hilleret  (parameterized by Furman & Pivi, LBNL-49771. Peak SEY=2.05)
+!276.8  1.8848  1.54  4  E0tspk,dtspk,powts,iprob
+!0.66 0.8 0.7 1 0 0 tpar1-tpar6
+!1.5 1.75 1 3.75 8.5 11.5 2.5 3 2.5 3 enpar
+!2.5 3.3 2.5 2.5 2.8 1.3 1.5 1.5 1.5 1.5 pnpar
+!0.02 0.5 0 61 1 0.26 2 2 P1einf,P1epk,E0epk,E0w,powe,epar1,epar2,sige
+!0.041 0 0.1 0.26 2 0.5 Ecr,P1rinf,qr,rpar1,rpar2,pr
+
+!    Eric Wulff (fitted to ECLOUD model)
+!332.  1.6000  1.35  4  E0tspk,dtspk,powts,iprob
+!0.675766 0.767523 0.7 1 0 0 tpar1-tpar6
+!7.44033631e+00 2.47339424e+00 7.45004962e+00 1.63618903e+01 4.97986255e-01 7.96170380e+01 6.60354258e+01 7.08053955e+01 5.64779654e-02 7.98873331e+01 enpar
+!1.21963859 1.66070543 1.21935223 1.09987752 4.28158656 1.02052557 1.0247471 1.02307995 29.93491271 1.02045612 pnpar
+!0.002158 0.709633 0 46.028959 0.468907 0 2 2 P1einf,P1epk,E0epk,E0w,powe,epar1,epar2,sige
+!0.041 0 0.1 0.26 2 0.5 Ecr,P1rinf,qr,rpar1,rpar2,pr
+
+! total SEY params.:
+1.71221, 1 dtotpk,pangsec
+!1.18, 1 dtotpk,pangsec
+
+! clearing electrode params:
+ 0 0.01 0.005 strvolt,strwidth,strgap
+
+! kinetic energy spectrum stuff of ecloud in total, as a f. of time
+ 1  3000 1 0 1e-9   dek, ektop, tek1 ,tek2, dtek  (tek1>tek2 means the spectra will not be generated)
+
+! kinetic energy spectrum stuff electrons striking the walls
+  1e-9, 0, 3000  dtsm,dek0,ek0top
+ 0 0 0 0  winx1,winx2,winy1,winy2 (0 means the window will be resized to cover the full chamber)
+
+! statistics of ecloud within an ellipse around the beam center:
+ 5e-3  5e-3  ctrx,ctry
+
+! I don't remember what this is
+ 0 ibbk
+
+! space-charge computation:
+ 3  ispch
+ 7 , 7   ngrexpx, ngrexpy  NOTE: ngrexpx=ngrexpy=7 means a 128x128 grid
+
+ 0 nsteps (0 means the integration time step between bunches will be as close as possible as that within a bunch)
+
+! checkpointing time interval:
+ 10e-9   dtchk (=every 10 nsec)
+
+! coherent dipole wake stuff
+ 0 iwake
+
+! generate step-by-step ecloud scatter plots to make a movie:
+ 0 idis
+
+! step-by-step x-y histograms:
+1 ibbb
+0,1e-4,25e-9  tbbb1,tbbb2,dthisbbb
+100, 100 nbinsbbbx,nbinsbbby
+0 0 0 0  xbbb1,xbbb2,ybbb1,ybbb2 (value=0 means that it will default to chamber size)
+
+! run-averaged histograms
+ 2 ihisxy (2 means both 1D and 2D histograms)
+ 100, 100  nbinsx,nbinsy
+  0 0 0 0       xplot1,xplot2,yplot1,yplot2
+
+! dump phase space at end of run?
+ 0 idumpphsp
+
+! death certificates
+ 0 iwcoll
+
+! energy-time-position correlations
+ 0 iwcorr
+
+! WARNING: in posinst v.18, iprob is now entered in the first line for true secondaries, just after "powts"
+! probability distribution of emitted secondaries:
+! 4 iprob
+
+! culling phase space as a f of time
+! 0 icull
+ 1 icull
+ 2000000, 0.5 nexmax,ratcull
+
+! Mauro's switch to track the very first generation of photoelectrons:
+ 0 ievol
+
+! image fields?
+ 1 iim
+
+! birth certificates
+0 iwbirth
+
+! obsolete switch
+0 modesec
+
+! runstats.dat files?
+1 iout
+
+! computation algorithm for electrons striking the wall?
+1 interp
