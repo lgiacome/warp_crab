@@ -370,7 +370,7 @@ def myplots2(l_force=0):
             solver.solver.pfez(direction=1,l_transpose=1,view=10)
         pw.refresh()
 
-pw.installafterstep(myplots)
+#pw.installafterstep(myplots)
 
 myplots(1)
 
@@ -411,7 +411,7 @@ for n_step in range(tot_nsteps):
 
 #dict_out['numelecs'] = numelecs
 dict_out['total'] = total
-sio.savemat('output_par.mat',dict_out)
+sio.savemat('output.mat',dict_out)
 t1 = time.time()
 totalt = t1 - t0
 print('Run terminated in %ds' %totalt)
