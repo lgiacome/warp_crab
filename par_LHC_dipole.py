@@ -6,7 +6,8 @@ from scipy.stats import gaussian_kde
 from warp.particles.Secondaries import *
 import matplotlib.pyplot as plt
 import parser
-
+import scipy.io as sio
+from io import BytesIO as StringIO
 ##########################
 # physics parameters
 ##########################
@@ -25,7 +26,7 @@ unit = 1e-3
 max_steps = 1#500
 
 # --- grid
-dh = .3e-3
+dh = 3e-3
 
 
 zs_dipo = -500*unit
@@ -50,7 +51,7 @@ sigmat= 1.000000e-09/4.
 sigmaz = sigmat*299792458.
 b_spac = 25e-9
 t_offs = b_spac-6*sigmat
-n_bunches = 100
+n_bunches = 2
 
 beam_number_per_cell_each_dim = [1, 1, 1]
 
@@ -210,7 +211,7 @@ def nonlinearsource():
     NP = int(time_prof(top.time))
     x = random.normal(bunch_centroid_position[0],bunch_rms_size[0],NP)
     y = random.normal(bunch_centroid_position[1],bunch_rms_size[1],NP)
-    z = bunch_centroid_position[2]
+    z = bunch_centroid_position[2]+random.uniform(-0.5,0.5,NP)*top.dt*picmi.warp.clight*np.sqrt(1-1./(beam_uz**2))
     vx = random.normal(bunch_centroid_velocity[0],bunch_rms_velocity[0],NP)
     vy = random.normal(bunch_centroid_velocity[1],bunch_rms_velocity[1],NP)
     vz = picmi.warp.clight*np.sqrt(1-1./(beam_uz**2))
@@ -289,7 +290,7 @@ step=pw.step
 if mysolver=='ES':
     print(pw.ave(beam.wspecies.getvz())/picmi.clight)
 #    pw.top.dt = pw.w3d.dz/pw.ave(beam.wspecies.getvz())
-    pw.top.dt = minnd([pw.w3d.dx,pw.w3d.dy,pw.w3d.dz])/clight
+    pw.top.dt = 25e-11 #minnd([pw.w3d.dx,pw.w3d.dy,pw.w3d.dz])/clight
 
 def myplots(l_force=0):
     if mysolver=='EM':  
@@ -340,8 +341,11 @@ def myplots(l_force=0):
         axs[1].set_ylabel('y [m]')
         axs[1].set_title('e- density')
         fig.colorbar(im2, ax=axs[1])
-        plt.draw()
-        plt.pause(1e-8)
+        n_step = top.time/top.dt
+        figname = 'images/%d.png' %n_step
+        plt.savefig(figname)
+    #   plt.draw()
+    #plt.pause(1e-8)
         
     if 1==0: #mysolver=='EM':
         solver.solver.pfex(direction=1,l_transpose=1,view=9)
@@ -374,24 +378,43 @@ ntsteps_p_bunch = b_spac/top.dt
 n_step = 0
 tot_nsteps = int(round(b_spac*n_bunches/top.dt))
 numelecs = np.zeros(tot_nsteps)
+total = np.zeros(tot_nsteps)
 b_pass = 0
-
 perc = 10
+dict_out = {}
+#original = sys.stdout
+#text_trap = StringIO()
+#sys.stdout = text_trap
+t0 = time.time()
 for n_step in range(tot_nsteps):
+    ts0 = time.time()
     if n_step/ntsteps_p_bunch > b_pass:
         b_pass+=1
         perc = 10
         print('===========================')
         print('Bunch passage: %d' %b_pass)
         print('Number of electrons in the dipole: %d' %(np.sum(secelec.wspecies.getw())+np.sum(elecb.wspecies.getw())))
-    if n_step/ntsteps_p_bunch*100>perc:
+    if n_step%ntsteps_p_bunch/ntsteps_p_bunch*100>=perc:
         print('%d%% of bunch passage' %perc)
         perc = perc+10
-    original = sys.stdout
-    sys.stdout = open('solver_info.txt', 'w')
+#    original = sys.stdout
+#    sys.stdout = open('solver_info.txt', 'w')
     step(1)
-    sys.stdout = original
-    numelecs[n_step] = np.sum(secelec.wspecies.getw())+np.sum(elecb.wspecies.getw())
+#   numelecs[n_step] = np.sum(secelec.wspecies.getw())+np.sum(elecb.wspecies.getw())
+    ts1 = time.time()
+    total[n_step] = ts1-ts0
+
+#sys.stdout = original
+#   if n_step%10==0:
+#        dict_out['numelecs'] = numelecs
+#        sio.savemat('output.mat',dict_out)
+
+#dict_out['numelecs'] = numelecs
+dict_out['total'] = total
+sio.savemat('output_par.mat',dict_out)
+t1 = time.time()
+totalt = t1 - t0
+print('Run terminated in %ds' %totalt)
 
 
 ########################
