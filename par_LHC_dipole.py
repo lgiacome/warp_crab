@@ -372,7 +372,7 @@ def myplots2(l_force=0):
 
 #pw.installafterstep(myplots)
 
-myplots(1)
+#myplots(1)
 
 ntsteps_p_bunch = b_spac/top.dt
 n_step = 0
