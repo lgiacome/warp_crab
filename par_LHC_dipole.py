@@ -169,7 +169,6 @@ upper_box = picmi.warp.YPlane(y0=h,ysign=1,condid=1)
 lower_box = picmi.warp.YPlane(y0=-h,ysign=-1,condid=1)
 
 sim = picmi.Simulation(solver = solver,
-                       max_steps = max_steps,
                        verbose = 1,
                        cfl = 1.0,
                        warp_initialize_solver_after_generate = 1)
