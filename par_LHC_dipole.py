@@ -22,13 +22,8 @@ unit = 1e-3
 # numerics parameters
 ##########################
 
-# --- Nb time steps
-
-max_steps = 1#500
-
 # --- grid
 dh = .3e-3
-
 
 zs_dipo = -500*unit
 ze_dipo = 500*unit
@@ -52,7 +47,7 @@ sigmat= 1.000000e-09/4.
 sigmaz = sigmat*299792458.
 b_spac = 25e-9
 t_offs = b_spac-6*sigmat
-n_bunches = 30
+n_bunches = 1
 
 beam_number_per_cell_each_dim = [1, 1, 1]
 
