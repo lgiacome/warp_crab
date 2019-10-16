@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import parser
 import scipy.io as sio
 from io import BytesIO as StringIO
+from mpi4py import MPI
 ##########################
 # physics parameters
 ##########################
@@ -26,7 +27,7 @@ unit = 1e-3
 max_steps = 1#500
 
 # --- grid
-dh = 3e-3
+dh = .3e-3
 
 
 zs_dipo = -500*unit
@@ -51,7 +52,7 @@ sigmat= 1.000000e-09/4.
 sigmaz = sigmat*299792458.
 b_spac = 25e-9
 t_offs = b_spac-6*sigmat
-n_bunches = 2
+n_bunches = 30
 
 beam_number_per_cell_each_dim = [1, 1, 1]
 
@@ -82,7 +83,7 @@ sigmay = np.sqrt(egeom_y*beta_y)
 '''
 
 sigmax = 2e-4
-sigmay = 2e-4
+sigmay = 2.1e-4
 
 bunch_rms_size            = [sigmax, sigmay, sigmaz]
 bunch_rms_velocity        = [0.,0.,0.]
@@ -211,7 +212,7 @@ def nonlinearsource():
     NP = int(time_prof(top.time))
     x = random.normal(bunch_centroid_position[0],bunch_rms_size[0],NP)
     y = random.normal(bunch_centroid_position[1],bunch_rms_size[1],NP)
-    z = bunch_centroid_position[2]+random.uniform(-0.5,0.5,NP)*top.dt*picmi.warp.clight*np.sqrt(1-1./(beam_uz**2))
+    z = bunch_centroid_position[2]#+random.uniform(-0.5,0.5,NP)*top.dt*picmi.warp.clight*np.sqrt(1-1./(beam_uz**2))
     vx = random.normal(bunch_centroid_velocity[0],bunch_rms_velocity[0],NP)
     vy = random.normal(bunch_centroid_velocity[1],bunch_rms_velocity[1],NP)
     vz = picmi.warp.clight*np.sqrt(1-1./(beam_uz**2))
@@ -234,7 +235,7 @@ pp = warp.ParticleScraper(sim.conductors,lsavecondid=1,lsaveintercept=1,lcollect
 ####################################
 
 def set_params_user(maxsec, matnum):
-    dict = parser.pos2dic('LHC_inj_72bx5.in')
+    dict = parser.pos2dic('2.20.txt')
 
     posC.matsurf = dict['matsurf']
     posC.iprob = dict['iprob']
@@ -290,7 +291,7 @@ step=pw.step
 if mysolver=='ES':
     print(pw.ave(beam.wspecies.getvz())/picmi.clight)
 #    pw.top.dt = pw.w3d.dz/pw.ave(beam.wspecies.getvz())
-    pw.top.dt = 25e-11 #minnd([pw.w3d.dx,pw.w3d.dy,pw.w3d.dz])/clight
+    pw.top.dt = minnd([pw.w3d.dx,pw.w3d.dy,pw.w3d.dz])/clight
 
 def myplots(l_force=0):
     if mysolver=='EM':  
@@ -382,8 +383,8 @@ total = np.zeros(tot_nsteps)
 b_pass = 0
 perc = 10
 dict_out = {}
-#original = sys.stdout
-#text_trap = StringIO()
+original = sys.stdout
+text_trap = StringIO()
 #sys.stdout = text_trap
 t0 = time.time()
 for n_step in range(tot_nsteps):
@@ -397,19 +398,19 @@ for n_step in range(tot_nsteps):
     if n_step%ntsteps_p_bunch/ntsteps_p_bunch*100>=perc:
         print('%d%% of bunch passage' %perc)
         perc = perc+10
-#    original = sys.stdout
-#    sys.stdout = open('solver_info.txt', 'w')
+    original = sys.stdout
+    sys.stdout = text_trap
     step(1)
-#   numelecs[n_step] = np.sum(secelec.wspecies.getw())+np.sum(elecb.wspecies.getw())
+    numelecs[n_step] = np.sum(secelec.wspecies.getw())+np.sum(elecb.wspecies.getw())
     ts1 = time.time()
     total[n_step] = ts1-ts0
-
-#sys.stdout = original
+    sys.stdout = original
+    #print(numelecs[n_step])
 #   if n_step%10==0:
 #        dict_out['numelecs'] = numelecs
 #        sio.savemat('output.mat',dict_out)
 
-#dict_out['numelecs'] = numelecs
+dict_out['numelecs'] = numelecs
 dict_out['total'] = total
 sio.savemat('output.mat',dict_out)
 t1 = time.time()
