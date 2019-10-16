@@ -179,12 +179,12 @@ sim = picmi.Simulation(solver = solver,
 
 sim.conductors = pipe+upper_box+lower_box
 
-beam_layout = picmi.PseudoRandomLayout(n_macroparticles = 10**5, seed = 3)
+beam_layout = picmi.PseudoRandomLayout(n_macroparticles = 10**4, seed = 3)
 
 sim.add_species(beam, layout=beam_layout,
                 initialize_self_field = solver=='EM')
 
-elecb_layout = picmi.PseudoRandomLayout(n_macroparticles = 10**5, seed = 3)
+elecb_layout = picmi.PseudoRandomLayout(n_macroparticles = 10**4, seed = 3)
 
 sim.add_species(elecb, layout=elecb_layout,
                 initialize_self_field = solver=='EM')
@@ -233,7 +233,7 @@ pp = warp.ParticleScraper(sim.conductors,lsavecondid=1,lsaveintercept=1,lcollect
 ####################################
 
 def set_params_user(maxsec, matnum):
-    dict = parser.pos2dic('LHC_inj_72bx5.in')
+    dict = parser.pos2dic('2.20.txt')
 
     posC.matsurf = dict['matsurf']
     posC.iprob = dict['iprob']
@@ -289,7 +289,7 @@ step=pw.step
 if mysolver=='ES':
     print(pw.ave(beam.wspecies.getvz())/picmi.clight)
 #    pw.top.dt = pw.w3d.dz/pw.ave(beam.wspecies.getvz())
-    pw.top.dt = minnd([pw.w3d.dx,pw.w3d.dy,pw.w3d.dz])/clight
+    pw.top.dt = 25e-11 #minnd([pw.w3d.dx,pw.w3d.dy,pw.w3d.dz])/clight
 
 def myplots(l_force=0):
     if mysolver=='EM':  
