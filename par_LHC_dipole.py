@@ -52,7 +52,7 @@ sigmat= 1.000000e-09/4.
 sigmaz = sigmat*299792458.
 b_spac = 25e-9
 t_offs = b_spac-6*sigmat
-n_bunches = 30
+n_bunches = 10
 
 beam_number_per_cell_each_dim = [1, 1, 1]
 
@@ -235,15 +235,15 @@ pp = warp.ParticleScraper(sim.conductors,lsavecondid=1,lsaveintercept=1,lcollect
 ####################################
 
 def set_params_user(maxsec, matnum):
-    dict = parser.pos2dic('2.20.txt')
-
+    dict = parser.pos2dic('LHC_inj_72bx5.in')
+    
     posC.matsurf = dict['matsurf']
     posC.iprob = dict['iprob']
-
+    
     posC.enpar = dict['enpar']
     
     posC.pnpar= dict['pnpar']
-        
+    
     posC.dtspk = dict['dtspk']
     posC.dtotpk = dict['dtotpk']
     posC.pangsec = dict['pangsec']
@@ -271,13 +271,14 @@ def set_params_user(maxsec, matnum):
     posC.qr = dict['qr']
 
 # --- set emission of neutrals
-sec=Secondaries(conductors=sim.conductors, set_params_user  = set_params_user)
+sec=Secondaries(conductors=sim.conductors, set_params_user  = set_params_user,
+                l_usenew=1)
 sec.add(incident_species = elecb.wspecies,
         emitted_species  = secelec.wspecies,
         conductor        = sim.conductors)
 sec.add(incident_species = secelec.wspecies,
-         emitted_species = secelec.wspecies,
-         conductor       = sim.conductors)
+        emitted_species = secelec.wspecies,
+        conductor       = sim.conductors)
 
 # --- set weights of secondary electrons
 #secelec.wspecies.getw()[...] = elecb.wspecies.getw()[0]
@@ -290,8 +291,8 @@ step=pw.step
 
 if mysolver=='ES':
     print(pw.ave(beam.wspecies.getvz())/picmi.clight)
-#    pw.top.dt = pw.w3d.dz/pw.ave(beam.wspecies.getvz())
-    pw.top.dt = minnd([pw.w3d.dx,pw.w3d.dy,pw.w3d.dz])/clight
+    #    pw.top.dt = pw.w3d.dz/pw.ave(beam.wspecies.getvz())
+    pw.top.dt = 25e-12 #minnd([pw.w3d.dx,pw.w3d.dy,pw.w3d.dz])/clight
 
 def myplots(l_force=0):
     if mysolver=='EM':  
@@ -343,9 +344,10 @@ def myplots(l_force=0):
         axs[1].set_title('e- density')
         fig.colorbar(im2, ax=axs[1])
         n_step = top.time/top.dt
-        figname = 'images/%d.png' %n_step
+        figname = 'images2/%d.png' %n_step
         plt.savefig(figname)
-    #   plt.draw()
+        print('plot')
+    #plt.draw()
     #plt.pause(1e-8)
         
     if 1==0: #mysolver=='EM':
@@ -371,9 +373,9 @@ def myplots2(l_force=0):
             solver.solver.pfez(direction=1,l_transpose=1,view=10)
         pw.refresh()
 
-#pw.installafterstep(myplots)
+pw.installafterstep(myplots)
 
-#myplots(1)
+myplots(1)
 
 ntsteps_p_bunch = b_spac/top.dt
 n_step = 0
