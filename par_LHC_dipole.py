@@ -22,13 +22,8 @@ unit = 1e-3
 # numerics parameters
 ##########################
 
-# --- Nb time steps
-
-max_steps = 1#500
-
 # --- grid
 dh = .3e-3
-
 
 zs_dipo = -500*unit
 ze_dipo = 500*unit
@@ -52,7 +47,7 @@ sigmat= 1.000000e-09/4.
 sigmaz = sigmat*299792458.
 b_spac = 25e-9
 t_offs = b_spac-6*sigmat
-n_bunches = 10
+n_bunches = 2
 
 beam_number_per_cell_each_dim = [1, 1, 1]
 
@@ -174,7 +169,6 @@ upper_box = picmi.warp.YPlane(y0=h,ysign=1,condid=1)
 lower_box = picmi.warp.YPlane(y0=-h,ysign=-1,condid=1)
 
 sim = picmi.Simulation(solver = solver,
-                       max_steps = max_steps,
                        verbose = 1,
                        cfl = 1.0,
                        warp_initialize_solver_after_generate = 1)
@@ -270,9 +264,10 @@ def set_params_user(maxsec, matnum):
     posC.powe = dict['powe']
     posC.qr = dict['qr']
 
-# --- set emission of neutrals
+
 sec=Secondaries(conductors=sim.conductors, set_params_user  = set_params_user,
                 l_usenew=1)
+sec=Secondaries(conductors=sim.conductors, set_params_user  = set_params_user)
 sec.add(incident_species = elecb.wspecies,
         emitted_species  = secelec.wspecies,
         conductor        = sim.conductors)
@@ -291,8 +286,10 @@ step=pw.step
 
 if mysolver=='ES':
     print(pw.ave(beam.wspecies.getvz())/picmi.clight)
+
     #    pw.top.dt = pw.w3d.dz/pw.ave(beam.wspecies.getvz())
     pw.top.dt = 25e-12 #minnd([pw.w3d.dx,pw.w3d.dy,pw.w3d.dz])/clight
+
 
 def myplots(l_force=0):
     if mysolver=='EM':  
@@ -354,7 +351,6 @@ def myplots(l_force=0):
         solver.solver.pfex(direction=1,l_transpose=1,view=9)
         solver.solver.pfez(direction=1,l_transpose=1,view=10)
     pw.refresh()
-        
 
 
 def myplots2(l_force=0):
