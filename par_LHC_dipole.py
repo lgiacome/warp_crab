@@ -254,8 +254,7 @@ def set_params_user(maxsec, matnum):
 
 
 sec=Secondaries(conductors=sim.conductors, set_params_user  = set_params_user,
-                l_usenew=1)
-sec=Secondaries(conductors=sim.conductors, set_params_user  = set_params_user)
+                l_usenew=0)
 sec.add(incident_species = elecb.wspecies,
         emitted_species  = secelec.wspecies,
         conductor        = sim.conductors)
@@ -390,12 +389,12 @@ for n_step in range(tot_nsteps):
     sys.stdout = original
     if n_step%10==0:
         dict_out['numelecs'] = numelecs
-        sio.savemat('output1.mat',dict_out)
+        sio.savemat('output0.mat',dict_out)
 t1 = time.time()
 totalt = t1-t0
 dict_out['numelecs'] = numelecs
 dict_out['total'] = total
-sio.savemat('output.mat',dict_out)
+sio.savemat('output0.mat',dict_out)
 
 print('Run terminated in %ds' %totalt)
 
