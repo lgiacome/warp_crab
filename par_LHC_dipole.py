@@ -254,7 +254,7 @@ def set_params_user(maxsec, matnum):
 
 
 sec=Secondaries(conductors=sim.conductors, set_params_user  = set_params_user,
-                l_usenew=0)
+                l_usenew=1)
 sec=Secondaries(conductors=sim.conductors, set_params_user  = set_params_user)
 sec.add(incident_species = elecb.wspecies,
         emitted_species  = secelec.wspecies,
@@ -372,6 +372,7 @@ dict_out = {}
 original = sys.stdout
 text_trap = StringIO()
 #sys.stdout = text_trap
+t0 = time.time()
 for n_step in range(tot_nsteps):
     if n_step/ntsteps_p_bunch > b_pass:
         b_pass+=1
@@ -389,8 +390,9 @@ for n_step in range(tot_nsteps):
     sys.stdout = original
     if n_step%10==0:
         dict_out['numelecs'] = numelecs
-        sio.savemat('output.mat',dict_out)
-
+        sio.savemat('output1.mat',dict_out)
+t1 = time.time()
+totalt = t1-t0
 dict_out['numelecs'] = numelecs
 dict_out['total'] = total
 sio.savemat('output.mat',dict_out)
