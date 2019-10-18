@@ -64,18 +64,6 @@ bunch_macro_particles = bunch_physical_particles/bunch_w
 # compute beam size from normalized emittance and beta
 # Uncomment if data available
 #######################################################
-'''
-enorm_x = 3.5e-7
-enorm_y = 3.5e-7
-beta_x = 40
-beta_y = 80
-gamma_rel = beam_uz
-beta_rel = 1/np.sqrt(1+1./(gamma_rel**2))
-egeom_x = enorm_x/(beta_rel*gamma_rel)
-egeom_y = enorm_y/(beta_rel*gamma_rel)
-sigmax = np.sqrt(egeom_x*beta_x)
-sigmay = np.sqrt(egeom_y*beta_y)
-'''
 
 sigmax = 2e-4
 sigmay = 2.1e-4
@@ -266,7 +254,7 @@ def set_params_user(maxsec, matnum):
 
 
 sec=Secondaries(conductors=sim.conductors, set_params_user  = set_params_user,
-                l_usenew=1)
+                l_usenew=0)
 sec=Secondaries(conductors=sim.conductors, set_params_user  = set_params_user)
 sec.add(incident_species = elecb.wspecies,
         emitted_species  = secelec.wspecies,
@@ -384,9 +372,7 @@ dict_out = {}
 original = sys.stdout
 text_trap = StringIO()
 #sys.stdout = text_trap
-t0 = time.time()
 for n_step in range(tot_nsteps):
-    ts0 = time.time()
     if n_step/ntsteps_p_bunch > b_pass:
         b_pass+=1
         perc = 10
@@ -400,60 +386,14 @@ for n_step in range(tot_nsteps):
     sys.stdout = text_trap
     step(1)
     numelecs[n_step] = np.sum(secelec.wspecies.getw())+np.sum(elecb.wspecies.getw())
-    ts1 = time.time()
-    total[n_step] = ts1-ts0
     sys.stdout = original
-    #print(numelecs[n_step])
-#   if n_step%10==0:
-#        dict_out['numelecs'] = numelecs
-#        sio.savemat('output.mat',dict_out)
+    if n_step%10==0:
+        dict_out['numelecs'] = numelecs
+        sio.savemat('output.mat',dict_out)
 
 dict_out['numelecs'] = numelecs
 dict_out['total'] = total
 sio.savemat('output.mat',dict_out)
-t1 = time.time()
-totalt = t1 - t0
+
 print('Run terminated in %ds' %totalt)
 
-
-########################
-# My plots
-########################
-'''
-fig, axes = plt.subplots(nrows=1, ncols=2)
-plt.subplot(1,2,1)
-zz1 = pw.getz().copy()
-yy1 = pw.gety().copy()
-xy1 = np.vstack([zz1/pw.clight,yy1*1e3])
-z1 = gaussian_kde(xy1)(xy1)
-plt.scatter((zz1/pw.clight-np.mean(zz1/pw.clight))*1e9, yy1*1e3 -  np.mean(yy1*1e3),
-        c=z1/np.max(z1), cmap='jet',  s=100, edgecolor='')
-plt.xlim(-1.2,1.2)
-plt.ylim(-6,6)
-plt.xlabel('t [ns]')
-plt.ylabel('y [mm]')
-
-if mysolver == 'EM':
-    step(650)
-if mysolver == 'ES':
-    step(100)
-
-#plt.subplot(1,2,2)
-
-zz2 = pw.getz().copy()
-yy2 = pw.gety().copy()
-xy2 = np.vstack([zz2/pw.clight,yy2*1e3])
-z2 = gaussian_kde(xy2)(xy2)
-sc = plt.scatter((zz2/pw.clight-np.mean(zz2/pw.clight))*1e9, yy2*1e3 -  np.mean(yy2*1e3),
-            c=z2/np.max(z2), cmap='jet',  s=100, edgecolor='')
-plt.xlim(-1.2,1.2)
-plt.ylim(-6,6)
-plt.xlabel('t [ns]')
-plt.ylabel('y [mm]')
-
-#fig.subplots_adjust(right=0.8)
-#cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
-#fig.colorbar(sc, cax=cbar_ax)
-plt.colorbar()
-plt.show()
-'''
