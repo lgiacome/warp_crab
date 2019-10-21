@@ -1,4 +1,6 @@
-def measure_SEY():    
+def measure_SEY(Ekin):
+
+
     import numpy as np
     import numpy.random as random
     #from pywarpx import picmi
@@ -48,7 +50,6 @@ def measure_SEY():
     sigmax = 2e-4
     sigmay = 2.1e-4
     E0 = 0.511*1e6
-    Ekin = 10
     E = E0 + Ekin
     beam_gamma = E/E0
     beam_beta = np.sqrt(1-1/(beam_gamma*beam_gamma))
@@ -216,7 +217,12 @@ def measure_SEY():
     for n_step in range(tot_nsteps):
         step(1)
     secondaries_count = np.sum(secelec.wspecies.getw())
-    return secondaries_count
 
-print(measure_SEY())
+    return secondaries_count/1000
 
+ene_array = np.linpace(0, 1000., 1000)
+
+from run_in_separate_process import run_in_separate_process
+for ene in [100, 200]:
+    res = run_in_separate_process(measure_SEY, [ene])
+    print(res)
