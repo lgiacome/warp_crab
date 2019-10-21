@@ -25,22 +25,22 @@ def measure_SEY(Ekin):
     ##########################
     # numerics parameters
     ##########################
+    # geometry
+    r = 0.005
+    l = 0.1
 
     # --- grid
-    
-    beam_number_per_cell_each_dim = [1, 1, 1]
-    dh = .5e-1
-    xmin = -1
-    xmax = 1
-    ymin = -1
-    ymax = 1
-    zmin = -1
-    zmax = 1
+    dh = r/10.
+    xmin = -2*r + 0.001
+    xmax = -xmin
+    ymin = -2*r + 0.001
+    ymax = -ymin
+    zmin = -l - 0.001
+    zmax = l
 
     nx = (xmax-xmin)/dh
     ny = (xmax-xmin)/dh
     nz = (xmax-xmin)/dh
-
 
     #######################################################
     # compute beam size from normalized emittance and beta
@@ -107,8 +107,6 @@ def measure_SEY(Ekin):
     ##########################
     # Simulation setup
     ##########################
-    r = 0.005
-    l = 1
     wall = picmi.warp.YCylinderOut(r,l)
 
     sim = picmi.Simulation(solver = solver,
@@ -208,21 +206,25 @@ def measure_SEY(Ekin):
     pw = picmi.warp
     em = solver.solver
     step=pw.step
-    top.dt = 1e-10
+    top.dt = dh/v
 
     n_step = 0
     tot_t = 2*r/v
     tot_nsteps = int(tot_t/top.dt)
-
     for n_step in range(tot_nsteps):
         step(1)
     secondaries_count = np.sum(secelec.wspecies.getw())
 
     return secondaries_count/1000
 
-ene_array = np.linpace(0, 1000., 1000)
-
+import numpy as np
+ene_array = np.linspace(1,1001,100)
+res = np.zeros_like(ene_array)
 from run_in_separate_process import run_in_separate_process
-for ene in [100, 200]:
-    res = run_in_separate_process(measure_SEY, [ene])
-    print(res)
+for ii, ene in enumerate(ene_array):
+    res[ii] = run_in_separate_process(measure_SEY, [ene])
+
+import matplotlib.pyplot as plt
+plt.plot(res)
+plt.show()
+
