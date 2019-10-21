@@ -254,7 +254,7 @@ def set_params_user(maxsec, matnum):
 
 
 sec=Secondaries(conductors=sim.conductors, set_params_user  = set_params_user,
-                l_usenew=0)
+                l_usenew=1)
 sec.add(incident_species = elecb.wspecies,
         emitted_species  = secelec.wspecies,
         conductor        = sim.conductors)
