@@ -1,4 +1,4 @@
-def measure_SEY(Ekin):
+def measure_SEY(Ekin, Nmp, N_elec_p_mp, sey_params_dict):
 
 
     import numpy as np
@@ -17,9 +17,9 @@ def measure_SEY(Ekin):
     
     # Construct PyECLOUD secondary emission object
     import PyECLOUD.sec_emission_model_ECLOUD as seec
-    sey_mod = seec.SEY_model_ECLOUD(Emax=300., del_max=1.8, R0=0.7, E_th=30,
-            sigmafit=1.09, mufit=1.66,
-            secondary_angle_distribution='cosine_3D')
+    sey_mod = seec.SEY_model_ECLOUD(Emax=sey_params_dict['Emax'], del_max=sey_params_dict['del_max'], R0=sey_params_dict['R0'], E_th=sey_params_dict['E_th'],
+            sigmafit=sey_params_dict['sigmafit'], mufit=sey_params_dict['mufit'],
+            secondary_angle_distribution=sey_params_dict['secondary_angle_distribution'])
 
 
 
@@ -134,18 +134,17 @@ def measure_SEY(Ekin):
 
     #########################
     # Add Dipole
-    #########################
-    bunch_w = 1
+    ########################
 
     def nonlinearsource():
-        NP = 1000*(top.it==3)
-        x = 0*np.ones(NP)
-        y = 0*np.ones(NP)
-        z = 0*np.ones(NP)
-        vx = np.zeros(NP)
-        vy = np.zeros(NP)
+        Nmp_inj = Nmp*(top.it==3)
+        x = 0*np.ones(Nmp_inj)
+        y = 0*np.ones(Nmp_inj)
+        z = 0*np.ones(Nmp_inj)
+        vx = np.zeros(Nmp_inj)
+        vy = np.zeros(Nmp_inj)
         vz = picmi.warp.clight*np.sqrt(1-1./(beam_gamma**2))
-        elec_beam.wspecies.addparticles(x=x,y=y,z=z,vx=vx,vy=vy,vz=vz,gi = 1./beam_gamma, w=bunch_w)
+        elec_beam.wspecies.addparticles(x=x,y=y,z=z,vx=vx,vy=vy,vz=vz,gi = 1./beam_gamma, w=N_elec_p_mp)
 
     picmi.warp.installuserinjection(nonlinearsource)
 
@@ -183,26 +182,43 @@ def measure_SEY(Ekin):
     tot_nsteps = int(tot_t/top.dt)
     for n_step in range(tot_nsteps):
         step(1)
-    secondaries_count = np.sum(secelec.wspecies.getw())
-
-    return secondaries_count/(100*1000)
+    dict_out = {}
+    dict_out['SEY'] = np.sum(secelec.wspecies.getw())/(Nmp*N_elec_p_mp)
+    #angle_dist =np.arctan(np.divide(secelec.wspecies.getvy(),secelec.wspecies.getvx()))
+    #dict_out['angle_dist'] = angle_dist
+    return dict_out
 
 import numpy as np
 
-ene_array = np.linspace(200,1001,100)
-res = np.zeros_like(ene_array)
+enable_trap = True
+ene_array = np.linspace(1,500,50)
+sey_curve = np.zeros_like(ene_array)
 from run_in_separate_process import run_in_separate_process
 import sys
 original = sys.stdout
 from io import BytesIO as StringIO
-text_trap = StringIO()
+text_trap = {True: StringIO(), False: sys.stdout}[enable_trap]
+Nmp = 100
+N_elec_p_mp = 100
 
-for ii, ene in enumerate([5]):
+sey_params_dict={}
+sey_params_dict['Emax'] = 300.
+sey_params_dict['del_max'] = 1.8
+sey_params_dict['R0'] = 0.7
+sey_params_dict['E_th'] = 30.
+sey_params_dict['sigmafit'] = 1.09
+sey_params_dict['mufit'] = 1.66
+sey_params_dict['secondary_angle_distribution'] = 'cosine_3D'
+
+
+for ii, ene in enumerate(ene_array):
     print(ii)
     sys.stdout = text_trap
-    res[ii] = run_in_separate_process(measure_SEY, [ene])
+    res = run_in_separate_process(measure_SEY, [ene, Nmp, N_elec_p_mp, sey_params_dict])
+    sey_curve[ii] = res['SEY']
     sys.stdout = original
+
 import matplotlib.pyplot as plt
-plt.plot(res)
+plt.plot(ene_array,sey_curve)
 plt.show()
 
