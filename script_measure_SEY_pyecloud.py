@@ -31,9 +31,19 @@ sey_params_dict['secondary_angle_distribution'] = 'cosine_3D'
 
 for ii, ene in enumerate(ene_array):
     print(ii)
+    kwargs = {
+        'Ekin': ene, 
+        'Nmp': Nmp,
+        'N_elec_p_mp': N_elec_p_mp, 
+        'sey_params_dict': sey_params_dict,
+        'thetagen': thetagen,
+        'phigen': phigen,
+        'flag_video':False 
+    }
+
     sys.stdout = text_trap
-    res = run_in_separate_process(measure_SEY, [ene,
-        Nmp, N_elec_p_mp, sey_params_dict, thetagen, phigen])
+    res = run_in_separate_process(measure_SEY,
+            kwargs=kwargs)
     sey_curve[ii] = res['SEY']
     sys.stdout = original
 
