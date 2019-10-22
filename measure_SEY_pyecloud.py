@@ -1,4 +1,5 @@
-def measure_SEY(Ekin, Nmp, N_elec_p_mp, sey_params_dict, flag_video=False):
+def measure_SEY(Ekin, Nmp, N_elec_p_mp, sey_params_dict, 
+        xgen=0, ygen=0, zgen=0, thetagen=0, phigen=0, flag_video=False):
 
 
     import numpy as np
@@ -135,17 +136,20 @@ def measure_SEY(Ekin, Nmp, N_elec_p_mp, sey_params_dict, flag_video=False):
     #########################
     # Add Dipole
     ########################
-
+    
+    vmod = picmi.warp.clight*np.sqrt(1-1./(beam_gamma**2))
+    vxgen = vmod * np.sin(thetagen)*np.cos(phigen)
+    vygen = vmod * np.sin(thetagen)*np.sin(phigen)
+    vzgen = vmod * np.cos(thetagen)
     def nonlinearsource():
         Nmp_inj = Nmp*(top.it==3)
-        x = 0*np.ones(Nmp_inj)
-        y = 0*np.ones(Nmp_inj)
-        z = 0*np.ones(Nmp_inj)
-        vx = np.zeros(Nmp_inj)
-        vy = np.zeros(Nmp_inj)
-        vz = picmi.warp.clight*np.sqrt(1-1./(beam_gamma**2))
+        x = xgen*np.ones(Nmp_inj)
+        y = ygen*np.ones(Nmp_inj)
+        z = zgen*np.ones(Nmp_inj)
+        vx = vxgen*np.ones(Nmp_inj)
+        vy = vygen*np.ones(Nmp_inj)
+        vz = vzgen*np.ones(Nmp_inj)
         elec_beam.wspecies.addparticles(x=x,y=y,z=z,vx=vx,vy=vy,vz=vz,gi = 1./beam_gamma, w=N_elec_p_mp)
-
     picmi.warp.installuserinjection(nonlinearsource)
 
 

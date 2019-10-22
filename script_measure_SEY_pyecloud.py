@@ -1,9 +1,14 @@
 import numpy as np
 from  measure_SEY_pyecloud import measure_SEY
 
+
+thetagen = 0.7*np.pi
+phigen = 1.4*np.pi
+
+
 enable_trap = True
 
-ene_array = np.linspace(0.5,1500,100)
+ene_array = np.linspace(0.5,1500,30)
 
 sey_curve = np.zeros_like(ene_array)
 from run_in_separate_process import run_in_separate_process
@@ -27,7 +32,8 @@ sey_params_dict['secondary_angle_distribution'] = 'cosine_3D'
 for ii, ene in enumerate(ene_array):
     print(ii)
     sys.stdout = text_trap
-    res = run_in_separate_process(measure_SEY, [ene, Nmp, N_elec_p_mp, sey_params_dict])
+    res = run_in_separate_process(measure_SEY, [ene,
+        Nmp, N_elec_p_mp, sey_params_dict, thetagen, phigen])
     sey_curve[ii] = res['SEY']
     sys.stdout = original
 
