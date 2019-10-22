@@ -2,8 +2,11 @@ import numpy as np
 from  measure_SEY_pyecloud import measure_SEY
 
 
-thetagen = 0.7*np.pi
-phigen = 1.4*np.pi
+thetagen = 0.*np.pi
+phigen = 0.*np.pi
+xgen = 3e-2
+ygen = 0.
+zgen = 0.
 
 
 enable_trap = True
@@ -38,7 +41,10 @@ for ii, ene in enumerate(ene_array):
         'sey_params_dict': sey_params_dict,
         'thetagen': thetagen,
         'phigen': phigen,
-        'flag_video':False 
+        'flag_video':False, 
+        'xgen': xgen,  
+        'ygen': ygen,  
+        'zgen': zgen,  
     }
 
     sys.stdout = text_trap

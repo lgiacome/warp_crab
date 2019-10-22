@@ -1,5 +1,47 @@
+from scipy.constants import m_e as me
+from scipy.constants import e as qe
+import numpy as np
+
+
+def impact_on_sphere(xgen, ygen, zgen, thetagen, phigen, Ekin, R):
+    
+    vmod = np.sqrt(Ekin*qe/(2*me))
+    vxgen = vmod * np.sin(thetagen)*np.cos(phigen)
+    vygen = vmod * np.sin(thetagen)*np.sin(phigen)
+    vzgen = vmod * np.cos(thetagen)
+    
+    vg = np.array([vxgen, vygen, vzgen])
+    rg = np.array([rxgen, rygen, rzgen])
+
+    b = 2 * np.dot(vg, rg)/np.dot(vg,vg)
+    c = (np.dot(rg, rg) - R**2)/np.dot(vg,vg)
+
+    t_impact = (-b + np.sqrt(b**2 - 4*a*c))/2
+
+    r_impact = rg + vg*t_impact
+
+    in_impact = -r_impact/R
+
+    costheta_impact = -np.dot(in_impact, vg)/np.sqrt(np.dot(vg, vg))
+
+    res = {
+        'vmod': vmod,
+        'vxgen': vxgen,
+        'vygen': vygen,
+        'vzgen':  vzgen,
+        'vg': vg,
+        'rg': rg,
+        't_impact': t_impact,
+        'r_impact': r_impact,
+        'in_impact': r_impact,
+        'costheta_impact': costheta_impact}
+
+    return res
+
+
 def measure_SEY(Ekin, Nmp, N_elec_p_mp, sey_params_dict, 
-        xgen=0, ygen=0, zgen=0, thetagen=0, phigen=0, flag_video=False):
+        xgen=0, ygen=0, zgen=0, thetagen=0, phigen=0, r_sphere = 0.05,
+        flag_video=False):
 
 
     import numpy as np
@@ -36,7 +78,6 @@ def measure_SEY(Ekin, Nmp, N_elec_p_mp, sey_params_dict,
     # numerics parameters
     ##########################
     # geometry
-    r_sphere = 0.05
 
     # --- grid
     dh = r_sphere/10.
