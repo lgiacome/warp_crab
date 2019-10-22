@@ -36,16 +36,16 @@ ze_dipo = 500*unit/100
 r = 23.e-3
 h = 18.e-3
 
+nx = 16
+ny = 16
+nz = 16
+
 xmin = -r
 xmax = r
 ymin = -r
 ymax = r
 zmin = zs_dipo-50*unit
 zmax = ze_dipo+50*unit
-
-nx = (xmax-xmin)/dh
-ny = (xmax-xmin)/dh
-nz = (xmax-xmin)/dh
 
 
 l = zmax-zmin
@@ -97,7 +97,7 @@ electron_background_dist = picmi.UniformDistribution(
                                                      upper_bound = [ r,
                                                                      h,
                                                                      ze_dipo],
-                                                     density = 1.e5/0.0014664200235342726
+                                                     density = 1.e8/0.0014664200235342726
                                                      )
 
 elecb = picmi.Species(particle_type = 'electron',
@@ -295,7 +295,7 @@ def myplots(l_force=0):
         axs[1].set_title('e- density')
         fig.colorbar(im2, ax=axs[1])
         n_step = top.time/top.dt
-        figname = 'images2/%d.png' %n_step
+        figname = 'images/%d.png' %n_step
         plt.savefig(figname)
         print('plot')
     #plt.draw()
@@ -323,20 +323,22 @@ def myplots2(l_force=0):
             solver.solver.pfez(direction=1,l_transpose=1,view=10)
         pw.refresh()
 
-pw.installafterstep(myplots)
+#pw.installafterstep(myplots)
 
-myplots(1)
+#myplots(1)
 
 ntsteps_p_bunch = b_spac/top.dt
 n_step = 0
 tot_nsteps = int(round(b_spac*n_bunches/top.dt))
 numelecs = np.zeros(tot_nsteps)
+elecs_density = np.zeros((tot_nsteps,nx+1,ny+1,nz+1))
+beam_density = np.zeros((tot_nsteps,nx+1,ny+1,nz+1))
 total = np.zeros(tot_nsteps)
 b_pass = 0
 perc = 10
 dict_out = {}
 original = sys.stdout
-text_trap = sys.stdout #StringIO()
+text_trap = StringIO()
 #sys.stdout = text_trap
 t0 = time.time()
 for n_step in range(tot_nsteps):
@@ -353,13 +355,19 @@ for n_step in range(tot_nsteps):
     sys.stdout = text_trap
     step(1)
     numelecs[n_step] = np.sum(secelec.wspecies.getw())+np.sum(elecb.wspecies.getw())
+    elecs_density[n_step,:,:,:] = secelec.wspecies.get_density()+ elecb.wspecies.get_density()
+    beam_density[n_step,:,:,:] = beam.wspecies.get_density()
     sys.stdout = original
-    if n_step%10==0:
+    if n_step%1000==0:
         dict_out['numelecs'] = numelecs
+	dict_out['elecs_density'] = elecs_density
+	dict_out['beam_density'] = beam_density
         sio.savemat('output0.mat',dict_out)
 t1 = time.time()
 totalt = t1-t0
 dict_out['numelecs'] = numelecs
+dict_out['elecs_density'] = elecs_density
+dict_out['beam_density'] = beam_density
 dict_out['total'] = total
 sio.savemat('output0.mat',dict_out)
 
