@@ -5,9 +5,9 @@ R_sphere = 0.05
 
 thetagen = 0.*np.pi
 phigen = 0.*np.pi
-xgen = 3e-2
-ygen = 0.
-zgen = 0.
+xgen = 2e-2
+ygen = -1.e-2
+zgen = 0.5e-2
 
 
 enable_trap = True
@@ -69,7 +69,7 @@ plt.plot(ene_array,sey_curve)
 
 from PyECLOUD.sec_emission_model_ECLOUD import yield_fun2
 
-del_ref, _ = yield_fun2(E=ene_array, costheta=impact_info['costheta'], s=1.35, E0=150,
+del_ref, _ = yield_fun2(E=ene_array, costheta=impact_info['costheta_impact'], s=1.35, E0=150,
     Emax=sey_params_dict['Emax'],
     del_max=sey_params_dict['del_max'],
     R0=sey_params_dict['R0'])
