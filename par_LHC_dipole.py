@@ -47,7 +47,7 @@ sigmat= 1.000000e-09/4.
 sigmaz = sigmat*299792458.
 b_spac = 25e-9
 t_offs = b_spac-6*sigmat
-n_bunches = 2
+n_bunches = 60
 
 beam_number_per_cell_each_dim = [1, 1, 1]
 
@@ -91,7 +91,7 @@ electron_background_dist = picmi.UniformDistribution(
                                                      upper_bound = [ r,
                                                                      h,
                                                                      ze_dipo],
-                                                     density = 1.e5/0.0014664200235342726
+                                                     density = 1.e8/0.0014664200235342726
                                                      )
 
 elecb = picmi.Species(particle_type = 'electron',
@@ -254,7 +254,7 @@ def set_params_user(maxsec, matnum):
 
 
 sec=Secondaries(conductors=sim.conductors, set_params_user  = set_params_user,
-                l_usenew=0)
+                l_usenew=1)
 sec.add(incident_species = elecb.wspecies,
         emitted_species  = secelec.wspecies,
         conductor        = sim.conductors)
@@ -283,7 +283,7 @@ def myplots(l_force=0):
         # why is this needed?
         em.clearconductors()
         em.installconductor(sim.conductors, dfill = picmi.warp.largepos)
-    if l_force or pw.top.it%10==0:
+    if l_force or pw.top.it%1==0:
         pw.fma()
         '''
         if 1==1: #mysolver=='ES':
@@ -310,7 +310,7 @@ def myplots(l_force=0):
         #pw.limits(xmin,xmax,ymin,ymax)
         #pw.plotegrd(ie,component = 'y', iz = 0, view = 6)
         '''
-    if l_force or 0==0:#pw.top.it%1==0:
+    if pw.top.it%10==0:
         plt.close()
         (Nx,Ny,Nz) = np.shape(secelec.wspecies.get_density())
         fig, axs = plt.subplots(1, 2,figsize=(12, 4.5))
@@ -327,10 +327,8 @@ def myplots(l_force=0):
         axs[1].set_ylabel('y [m]')
         axs[1].set_title('e- density')
         fig.colorbar(im2, ax=axs[1])
-        n_step = top.time/top.dt
-        figname = 'images2/%d.png' %n_step
+        figname = 'images/%d.png' %pw.top.it
         plt.savefig(figname)
-        print('plot')
     #plt.draw()
     #plt.pause(1e-8)
         
@@ -372,10 +370,15 @@ original = sys.stdout
 text_trap = StringIO()
 #sys.stdout = text_trap
 t0 = time.time()
+t2 = time.time()
 for n_step in range(tot_nsteps):
     if n_step/ntsteps_p_bunch > b_pass:
         b_pass+=1
         perc = 10
+	t2new = time.time()
+	if b_pass > 1:
+	    print('Previous passage took %dsec' %(t2-t2new))
+	t2 = t2new
         print('===========================')
         print('Bunch passage: %d' %b_pass)
         print('Number of electrons in the dipole: %d' %(np.sum(secelec.wspecies.getw())+np.sum(elecb.wspecies.getw())))
@@ -389,12 +392,12 @@ for n_step in range(tot_nsteps):
     sys.stdout = original
     if n_step%10==0:
         dict_out['numelecs'] = numelecs
-        sio.savemat('output0.mat',dict_out)
+        sio.savemat('output.mat',dict_out)
 t1 = time.time()
 totalt = t1-t0
 dict_out['numelecs'] = numelecs
 dict_out['total'] = total
-sio.savemat('output0.mat',dict_out)
+sio.savemat('output.mat',dict_out)
 
 print('Run terminated in %ds' %totalt)
 
