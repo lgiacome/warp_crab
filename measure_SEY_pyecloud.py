@@ -4,19 +4,19 @@ import numpy as np
 
 
 def impact_on_sphere(xgen, ygen, zgen, thetagen, phigen, Ekin, R):
-    
+
     vmod = np.sqrt(Ekin*qe/(2*me))
     vxgen = vmod * np.sin(thetagen)*np.cos(phigen)
     vygen = vmod * np.sin(thetagen)*np.sin(phigen)
     vzgen = vmod * np.cos(thetagen)
-    
+
     vg = np.array([vxgen, vygen, vzgen])
-    rg = np.array([rxgen, rygen, rzgen])
+    rg = np.array([xgen, ygen, zgen])
 
     b = 2 * np.dot(vg, rg)/np.dot(vg,vg)
     c = (np.dot(rg, rg) - R**2)/np.dot(vg,vg)
 
-    t_impact = (-b + np.sqrt(b**2 - 4*a*c))/2
+    t_impact = (-b + np.sqrt(b**2 - 4*c))/2
 
     r_impact = rg + vg*t_impact
 
@@ -33,14 +33,14 @@ def impact_on_sphere(xgen, ygen, zgen, thetagen, phigen, Ekin, R):
         'rg': rg,
         't_impact': t_impact,
         'r_impact': r_impact,
-        'in_impact': r_impact,
+        'in_impact': in_impact,
         'costheta_impact': costheta_impact}
 
     return res
 
 
-def measure_SEY(Ekin, Nmp, N_elec_p_mp, sey_params_dict, 
-        xgen=0, ygen=0, zgen=0, thetagen=0, phigen=0, r_sphere = 0.05,
+def measure_SEY(Ekin, Nmp, N_elec_p_mp, sey_params_dict,
+        xgen=0, ygen=0, zgen=0, thetagen=0, phigen=0, tot_t=None, r_sphere = 0.05,
         flag_video=False):
 
 
@@ -57,7 +57,7 @@ def measure_SEY(Ekin, Nmp, N_elec_p_mp, sey_params_dict,
     from scipy.constants import c as c_light
     from io import BytesIO as StringIO
     from mpi4py import MPI
-    
+
     # Construct PyECLOUD secondary emission object
     import PyECLOUD.sec_emission_model_ECLOUD as seec
     sey_mod = seec.SEY_model_ECLOUD(Emax=sey_params_dict['Emax'], del_max=sey_params_dict['del_max'], R0=sey_params_dict['R0'], E_th=sey_params_dict['E_th'],
@@ -177,7 +177,7 @@ def measure_SEY(Ekin, Nmp, N_elec_p_mp, sey_params_dict,
     #########################
     # Add Dipole
     ########################
-    
+
     vmod = picmi.warp.clight*np.sqrt(1-1./(beam_gamma**2))
     vxgen = vmod * np.sin(thetagen)*np.cos(phigen)
     vygen = vmod * np.sin(thetagen)*np.sin(phigen)
@@ -223,7 +223,6 @@ def measure_SEY(Ekin, Nmp, N_elec_p_mp, sey_params_dict,
     top.dt = dh/v
 
     n_step = 0
-    tot_t = 1.1*r_sphere/v
     tot_nsteps = int(np.ceil((tot_t/top.dt)))
     n_primelecs = []
     n_secelecs = []

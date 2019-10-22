@@ -1,6 +1,7 @@
 import numpy as np
-from  measure_SEY_pyecloud import measure_SEY
+from  measure_SEY_pyecloud import measure_SEY, impact_on_sphere 
 
+R_sphere = 0.05
 
 thetagen = 0.*np.pi
 phigen = 0.*np.pi
@@ -34,6 +35,12 @@ sey_params_dict['secondary_angle_distribution'] = 'cosine_3D'
 
 for ii, ene in enumerate(ene_array):
     print(ii)
+
+    impact_info = impact_on_sphere(xgen, ygen, zgen, 
+            thetagen, phigen, ene, R_sphere)
+
+    tot_t = impact_info['t_impact']
+
     kwargs = {
         'Ekin': ene, 
         'Nmp': Nmp,
@@ -44,7 +51,9 @@ for ii, ene in enumerate(ene_array):
         'flag_video':False, 
         'xgen': xgen,  
         'ygen': ygen,  
-        'zgen': zgen,  
+        'zgen': zgen,
+        'r_sphere': R_sphere, 
+        'tot_t': tot_t
     }
 
     sys.stdout = text_trap
@@ -60,7 +69,7 @@ plt.plot(ene_array,sey_curve)
 
 from PyECLOUD.sec_emission_model_ECLOUD import yield_fun2
 
-del_ref, _ = yield_fun2(E=ene_array, costheta=1., s=1.35, E0=150,
+del_ref, _ = yield_fun2(E=ene_array, costheta=impact_info['costheta'], s=1.35, E0=150,
     Emax=sey_params_dict['Emax'],
     del_max=sey_params_dict['del_max'],
     R0=sey_params_dict['R0'])
