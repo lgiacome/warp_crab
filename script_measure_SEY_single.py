@@ -1,11 +1,11 @@
 import numpy as np
 from  measure_SEY_pyecloud import measure_SEY
 
-enable_trap = True
+run_in_other_process = False
+enable_trap = False
 
-ene_array = np.linspace(0.5,1500,100)
+ene = 0.003
 
-sey_curve = np.zeros_like(ene_array)
 from run_in_separate_process import run_in_separate_process
 import sys
 original = sys.stdout
@@ -24,26 +24,25 @@ sey_params_dict['mufit'] = 1.66
 sey_params_dict['secondary_angle_distribution'] = 'cosine_3D'
 
 
-for ii, ene in enumerate(ene_array):
-    print(ii)
-    sys.stdout = text_trap
-    res = run_in_separate_process(measure_SEY, [ene, Nmp, N_elec_p_mp, sey_params_dict])
-    sey_curve[ii] = res['SEY']
-    sys.stdout = original
+sys.stdout = text_trap
 
-import matplotlib.pyplot as plt
-plt.close('all')
+if run_in_other_process:
+    res = run_in_separate_process(measure_SEY, [ene, Nmp, N_elec_p_mp,
+        sey_params_dict, True])
+else:
+    res = measure_SEY(ene, Nmp, N_elec_p_mp,
+        sey_params_dict, True)
 
-plt.plot(ene_array,sey_curve)
+sey_curve = res['SEY']
+sys.stdout = original
+
 
 from PyECLOUD.sec_emission_model_ECLOUD import yield_fun2
 
-del_ref, _ = yield_fun2(E=ene_array, costheta=1., s=1.35, E0=150,
+del_ref, _ = yield_fun2(E=np.array([ene]), costheta=1., s=1.35, E0=150,
     Emax=sey_params_dict['Emax'],
     del_max=sey_params_dict['del_max'],
     R0=sey_params_dict['R0'])
 
-plt.plot(ene_array, del_ref, 'g')
 
-plt.show()
 

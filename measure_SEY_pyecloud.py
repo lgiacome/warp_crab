@@ -1,4 +1,4 @@
-def measure_SEY(Ekin, Nmp, N_elec_p_mp, sey_params_dict):
+def measure_SEY(Ekin, Nmp, N_elec_p_mp, sey_params_dict, flag_video=False):
 
 
     import numpy as np
@@ -35,17 +35,16 @@ def measure_SEY(Ekin, Nmp, N_elec_p_mp, sey_params_dict):
     # numerics parameters
     ##########################
     # geometry
-    r = 0.005
-    l = 0.1
+    r_sphere = 0.05
 
     # --- grid
-    dh = r/10.
-    xmin = -2*r + 0.001
+    dh = r_sphere/10.
+    xmin = -r_sphere - 0.001
     xmax = -xmin
-    ymin = -2*r + 0.001
+    ymin = -r_sphere - 0.001
     ymax = -ymin
-    zmin = -l - 0.001
-    zmax = l
+    zmin = -r_sphere - 0.001
+    zmax = -zmin
 
     nx = (xmax-xmin)/dh
     ny = (xmax-xmin)/dh
@@ -116,8 +115,9 @@ def measure_SEY(Ekin, Nmp, N_elec_p_mp, sey_params_dict):
     ##########################
     # Simulation setup
     ##########################
-    wall = picmi.warp.YCylinderOut(r,l)
-
+    sphere = picmi.warp.Sphere(r_sphere)
+    box = picmi.warp.Box(xmax-xmin,ymax-ymin,zmax-zmin)
+    wall = box - sphere
     sim = picmi.Simulation(solver = solver,
                            verbose = 1,
                            cfl = 1.0,
@@ -161,7 +161,7 @@ def measure_SEY(Ekin, Nmp, N_elec_p_mp, sey_params_dict):
 
     sec=Secondaries(conductors=sim.conductors,
                     l_usenew=1, pyecloud_secemi_object=sey_mod,
-                    pyecloud_nel_mp_ref=1., pyecloud_fact_clean=1e-6,
+                    pyecloud_nel_mp_ref=N_elec_p_mp, pyecloud_fact_clean=1e-16,
                     pyecloud_fact_split=1.5)
 
     sec.add(incident_species = elec_beam.wspecies,
@@ -178,12 +178,37 @@ def measure_SEY(Ekin, Nmp, N_elec_p_mp, sey_params_dict):
     top.dt = dh/v
 
     n_step = 0
-    tot_t = 2*r/v
-    tot_nsteps = int(tot_t/top.dt)
-    for n_step in range(tot_nsteps):
+    tot_t = 1.1*r_sphere/v
+    tot_nsteps = int(np.ceil((tot_t/top.dt)))
+    n_primelecs = []
+    n_secelecs = []
+    n_mp_primelecs = []
+    n_mp_secelecs = []
+    secelecs_dist=[]
+    primelecs_dist = []
+
+    for n_step in range(tot_nsteps+1):
         step(1)
+        n_primelecs.append(np.sum(elec_beam.wspecies.getw()))
+        n_secelecs.append(np.sum(secelec.wspecies.getw()))
+        n_mp_primelecs.append(np.shape(elec_beam.wspecies.getw())[0])
+        n_mp_secelecs.append(np.shape(secelec.wspecies.getw())[0])
+        if flag_video:
+            secelecs_dist.append(np.sum(secelec.wspecies.get_density(), axis=1))    
+            primelecs_dist.append(np.sum(elec_beam.wspecies.get_density(), axis=1))
+
     dict_out = {}
     dict_out['SEY'] = np.sum(secelec.wspecies.getw())/(Nmp*N_elec_p_mp)
+    dict_out['n_primelecs'] = np.array(n_primelecs)
+    dict_out['n_secelecs'] = np.array(n_secelecs)
+    dict_out['n_mp_primelecs'] = np.array(n_mp_primelecs)
+    dict_out['n_mp_secelecs'] = np.array(n_mp_secelecs)
+    dict_out['secelecs_dist'] = np.array(secelecs_dist)
+    dict_out['primelecs_dist'] = np.array(primelecs_dist)
+    dict_out['xmesh']=solver.solver.xmesh.copy()
+    dict_out['ymesh']=solver.solver.ymesh.copy()
+    dict_out['zmesh']=solver.solver.zmesh.copy()
+
     #angle_dist =np.arctan(np.divide(secelec.wspecies.getvy(),secelec.wspecies.getvx()))
     #dict_out['angle_dist'] = angle_dist
     return dict_out
