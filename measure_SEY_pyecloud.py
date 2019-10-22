@@ -14,6 +14,15 @@ def measure_SEY(Ekin):
     from scipy.constants import c as c_light
     from io import BytesIO as StringIO
     from mpi4py import MPI
+    
+    # Construct PyECLOUD secondary emission object
+    import PyECLOUD.sec_emission_model_ECLOUD as seec
+    sey_mod = seec.SEY_model_ECLOUD(Emax=300., del_max=1.8, R0=0.7, E_th=30,
+            sigmafit=1.09, mufit=1.66,
+            secondary_angle_distribution='cosine_3D')
+
+
+
     ##########################
     # physics parameters
     ##########################
@@ -151,49 +160,10 @@ def measure_SEY(Ekin):
 
     pp = warp.ParticleScraper(sim.conductors,lsavecondid=1,lsaveintercept=1,lcollectlpdata=1)
 
-    ####################################
-    # Set material parameters from file
-    ####################################
-
-    def set_params_user(maxsec, matnum):
-        dict = parser.pos2dic('LHC_inj_72bx5.in')
-        
-        posC.matsurf = dict['matsurf']
-        posC.iprob = dict['iprob']
-        
-        posC.enpar = dict['enpar']
-        
-        posC.pnpar= dict['pnpar']
-        
-        posC.dtspk = dict['dtspk']
-        posC.dtotpk = dict['dtotpk']
-        posC.pangsec = dict['pangsec']
-        posC.pr = dict['pr']
-        posC.sige = dict['sige']
-        posC.Ecr = dict['Ecr']
-        posC.E0tspk = dict['E0tspk']
-        posC.E0epk = dict['E0epk']
-        posC.E0w = dict['E0w']
-        posC.rpar1 = dict['rpar'][0]
-        posC.rpar2 = dict['rpar'][1]
-        posC.tpar1 = dict['tpar'][0]
-        posC.tpar2 = dict['tpar'][1]
-        posC.tpar3 = dict['tpar'][2]
-        posC.tpar4 = dict['tpar'][3]
-        posC.tpar5 = dict['tpar'][4]
-        posC.tpar6 = dict['tpar'][5]
-        posC.epar1 = dict['epar'][0]
-        posC.epar2 = dict['epar'][1]
-        posC.P1rinf = dict['P1rinf']
-        posC.P1einf = dict['P1einf']
-        posC.P1epk = dict['P1epk']
-        posC.powts = dict['powts']
-        posC.powe = dict['powe']
-        posC.qr = dict['qr']
-
-
-    sec=Secondaries(conductors=sim.conductors, set_params_user  = set_params_user,
-                    l_usenew=1)
+    sec=Secondaries(conductors=sim.conductors,
+                    l_usenew=1, pyecloud_secemi_object=sey_mod,
+                    pyecloud_nel_mp_ref=1., pyecloud_fact_clean=1e-6,
+                    pyecloud_fact_split=1.5)
 
     sec.add(incident_species = elec_beam.wspecies,
             emitted_species  = secelec.wspecies,
@@ -215,20 +185,19 @@ def measure_SEY(Ekin):
         step(1)
     secondaries_count = np.sum(secelec.wspecies.getw())
 
-    return secondaries_count/1000
+    return secondaries_count/(100*1000)
 
 import numpy as np
-ene_array = np.linspace(1,1001,100)
-res = np.zeros_like(ene_array)
-from run_in_separate_process import run_in_separate_process
 
+ene_array = np.linspace(200,1001,100)
+res = np.zeros_like(ene_array)
 from run_in_separate_process import run_in_separate_process
 import sys
 original = sys.stdout
 from io import BytesIO as StringIO
 text_trap = StringIO()
 
-for ii, ene in enumerate(ene_array):
+for ii, ene in enumerate([5]):
     print(ii)
     sys.stdout = text_trap
     res[ii] = run_in_separate_process(measure_SEY, [ene])
