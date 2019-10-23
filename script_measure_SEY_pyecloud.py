@@ -3,11 +3,11 @@ from  measure_SEY_pyecloud import measure_SEY, impact_on_sphere
 
 R_sphere = 0.05
 
-thetagen = 0.*np.pi
-phigen = 0.*np.pi
-xgen = 0e-2
-ygen = 0e-2
-zgen = 0e-2
+thetagen = .7*np.pi
+phigen = 1.3*np.pi
+xgen = 1e-2
+ygen = -2e-2
+zgen = 0.5e-2
 
 
 enable_trap = True

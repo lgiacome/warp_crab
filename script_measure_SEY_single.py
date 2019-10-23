@@ -7,18 +7,11 @@ enable_trap = False
 
 R_sphere = 0.05
 
-thetagen = 0.*np.pi
-phigen = 0.*np.pi
+thetagen = 0.7*np.pi
+phigen = 1.2*np.pi
 xgen = 2e-2
 ygen = -1.e-2
 zgen = 0.5e-2
-
-thetagen = 0.*np.pi
-phigen = 0.*np.pi
-xgen = 0.
-ygen = 0.
-zgen = 0.
-
 
 ene = 0.5
 
