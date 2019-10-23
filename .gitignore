@@ -1,0 +1,7 @@
+*.cgmlog
+*.pyc
+*.png
+lsf.*
+*.out
+*.tar.gz
+*.mat
