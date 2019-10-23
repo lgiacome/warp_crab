@@ -1,5 +1,5 @@
 import numpy as np
-from  measure_SEY_pyecloud import measure_SEY, impact_on_sphere 
+from  measure_SEY_pyecloud import measure_SEY, impact_on_sphere
 
 R_sphere = 0.05
 
@@ -12,7 +12,7 @@ zgen = 0.5e-2
 
 enable_trap = True
 
-ene_array = np.linspace(0.5,1500,30)
+ene_array = np.linspace(5,1500,30)
 
 sey_curve = np.zeros_like(ene_array)
 from run_in_separate_process import run_in_separate_process
@@ -36,23 +36,23 @@ sey_params_dict['secondary_angle_distribution'] = 'cosine_3D'
 for ii, ene in enumerate(ene_array):
     print(ii)
 
-    impact_info = impact_on_sphere(xgen, ygen, zgen, 
+    impact_info = impact_on_sphere(xgen, ygen, zgen,
             thetagen, phigen, ene, R_sphere)
 
     tot_t = impact_info['t_impact']
 
     kwargs = {
-        'Ekin': ene, 
+        'Ekin': ene,
         'Nmp': Nmp,
-        'N_elec_p_mp': N_elec_p_mp, 
+        'N_elec_p_mp': N_elec_p_mp,
         'sey_params_dict': sey_params_dict,
         'thetagen': thetagen,
         'phigen': phigen,
-        'flag_video':False, 
-        'xgen': xgen,  
-        'ygen': ygen,  
+        'flag_video':False,
+        'xgen': xgen,
+        'ygen': ygen,
         'zgen': zgen,
-        'r_sphere': R_sphere, 
+        'r_sphere': R_sphere,
         'tot_t': tot_t
     }
 
