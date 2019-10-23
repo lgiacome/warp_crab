@@ -31,14 +31,14 @@ unit = 1e-3
 # --- grid
 dh = .3e-3*10
 
-zs_dipo = -500*unit/100
-ze_dipo = 500*unit/100
+zs_dipo = -500*unit
+ze_dipo = 500*unit
 r = 23.e-3
 h = 18.e-3
 
 nx = 16
 ny = 16
-nz = 16
+nz = 150
 
 xmin = -r
 xmax = r
@@ -47,6 +47,7 @@ ymax = r
 zmin = zs_dipo-50*unit
 zmax = ze_dipo+50*unit
 
+print((zmax-zmin)/nz)
 
 l = zmax-zmin
 sigmat= 1.000000e-09/4.

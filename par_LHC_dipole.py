@@ -41,7 +41,6 @@ nx = (xmax-xmin)/dh
 ny = (xmax-xmin)/dh
 nz = (xmax-xmin)/dh
 
-
 l = zmax-zmin
 sigmat= 1.000000e-09/4.
 sigmaz = sigmat*299792458.
