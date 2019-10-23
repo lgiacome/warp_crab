@@ -39,7 +39,7 @@ for ii, ene in enumerate(ene_array):
     impact_info = impact_on_sphere(xgen, ygen, zgen,
             thetagen, phigen, ene, R_sphere)
 
-    tot_t = impact_info['t_impact']
+    tot_t = 1.1*impact_info['t_impact']
 
     kwargs = {
         'Ekin': ene,
