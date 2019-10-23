@@ -5,7 +5,7 @@ import numpy as np
 
 def impact_on_sphere(xgen, ygen, zgen, thetagen, phigen, Ekin, R):
 
-    vmod = np.sqrt(Ekin*qe/(2*me))
+    vmod = np.sqrt(2*Ekin*qe/(me))
     vxgen = vmod * np.sin(thetagen)*np.cos(phigen)
     vygen = vmod * np.sin(thetagen)*np.sin(phigen)
     vzgen = vmod * np.cos(thetagen)

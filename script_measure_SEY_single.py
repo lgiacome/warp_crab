@@ -20,7 +20,7 @@ ygen = 0.
 zgen = 0.
 
 
-ene = 5.
+ene = 0.5
 
 from run_in_separate_process import run_in_separate_process
 import sys

@@ -5,9 +5,9 @@ R_sphere = 0.05
 
 thetagen = 0.*np.pi
 phigen = 0.*np.pi
-xgen = 2e-2
-ygen = -1.e-2
-zgen = 0.5e-2
+xgen = 0e-2
+ygen = 0e-2
+zgen = 0e-2
 
 
 enable_trap = True
