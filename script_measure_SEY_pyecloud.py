@@ -2,8 +2,7 @@ import numpy as np
 from  measure_SEY_pyecloud import measure_SEY
 
 enable_trap = True
-
-ene_array = np.linspace(0.5,1500,100)
+ene_array = np.linspace(5,1500,30)
 
 sey_curve = np.zeros_like(ene_array)
 from run_in_separate_process import run_in_separate_process
