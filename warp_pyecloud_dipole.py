@@ -73,7 +73,7 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 16, n_bunches = 2
     bunch_rms_size            = [sigmax, sigmay, sigmaz]
     bunch_rms_velocity        = [0.,0.,0.]
     bunch_centroid_position   = [0,0,zs_dipo-10*unit]
-    bunch_centroid_velocity   = [0.,0.,beam_uz*picmi.constants.c]
+    bunch_centroid_velocity   = [0.,0.,beam_gamma*picmi.constants.c]
 
     beam = picmi.Species(particle_type = 'proton',
                          particle_shape = 'linear',
@@ -191,8 +191,8 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 16, n_bunches = 2
         z = bunch_centroid_position[2]
         vx = random.normal(bunch_centroid_velocity[0],bunch_rms_velocity[0],NP)
         vy = random.normal(bunch_centroid_velocity[1],bunch_rms_velocity[1],NP)
-        vz = picmi.warp.clight*np.sqrt(1-1./(beam_uz**2))
-        beam.wspecies.addparticles(x=x,y=y,z=z,vx=vx,vy=vy,vz=vz,gi = 1./beam_uz, w=bunch_w)
+        vz = picmi.warp.clight*np.sqrt(1-1./(beam_gamma**2))
+        beam.wspecies.addparticles(x=x,y=y,z=z,vx=vx,vy=vy,vz=vz,gi = 1./beam_gamma, w=bunch_w)
 
     picmi.warp.installuserinjection(nonlinearsource)
 
