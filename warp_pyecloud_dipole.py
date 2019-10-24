@@ -257,7 +257,7 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 16, n_bunches = 2
         myplots(1)
 
     ntsteps_p_bunch = b_spac/top.dt
-    tot_nsteps = int(ceil(b_spac*n_bunches/top.dt))
+    tot_nsteps = int(np.ceil(b_spac*n_bunches/top.dt))
 
     # pre-allocate outputs
     numelecs = np.zeros(tot_nsteps)
