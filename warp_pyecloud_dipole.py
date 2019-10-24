@@ -3,7 +3,7 @@ def warp_pyecloud_dipole(zlength = 1, nx = 16, ny = 16, nz = 16, n_bunches = 2,
                          sigmay = 2.1e-4, sigmat= 1.000000e-09/4.,
                          bunch_intensity = 1e11, init_num_elecs = 1.e8,
                          init_num_elecs_mp = 10**2, By = 0.53,
-                         pyecloud_nel_mp_ref = 1., dt = 25e-12
+                         pyecloud_nel_mp_ref = 1., dt = 25e-12,
                          pyecloud_fact_clean = 1e-6, pyecloud_fact_split = 1.5,
                          chamber_type = 'rect', flag_save_video = False,
                          enable_trap = True, Emax = 300., del_max = 1.8,
@@ -14,7 +14,7 @@ def warp_pyecloud_dipole(zlength = 1, nx = 16, ny = 16, nz = 16, n_bunches = 2,
     import numpy.random as random
     from warp import picmi
     from scipy.stats import gaussian_kde
-    from warp.particles.Secondaries import *
+    from warp.particles.Secondaries import Secondaries
     import matplotlib.pyplot as plt
     import scipy.io as sio
     from io import BytesIO as StringIO
@@ -55,7 +55,7 @@ def warp_pyecloud_dipole(zlength = 1, nx = 16, ny = 16, nz = 16, n_bunches = 2,
     
     if chamber_type == 'LHC':
         chamber_area = 0.0014664200235342726
-    elif chamber_type == 'rect'
+    elif chamber_type == 'rect':
         chamber_area = 4*r*h
 
     ##########################
@@ -119,7 +119,7 @@ def warp_pyecloud_dipole(zlength = 1, nx = 16, ny = 16, nz = 16, n_bunches = 2,
                 compensation = [[False], [False], [False]],
                 stride = [[1], [1], [1]],
                 alpha = [[0.5], [0.5], [0.5]])
-                solver = picmi.ElectromagneticSolver(grid = grid,
+        solver = picmi.ElectromagneticSolver(grid = grid,
                                            method = 'CKC',
                                            cfl = 1.,
                                            source_smoother = smoother,
@@ -206,7 +206,7 @@ def warp_pyecloud_dipole(zlength = 1, nx = 16, ny = 16, nz = 16, n_bunches = 2,
 
     pp = warp.ParticleScraper(sim.conductors,lsavecondid=1,lsaveintercept=1,lcollectlpdata=1)
 
-    sec=Secondaries(conductors =s im.conductors, l_usenew = 1,
+    sec=Secondaries(conductors = sim.conductors, l_usenew = 1,
                     pyecloud_secemi_object = sey_mod,
                     pyecloud_nel_mp_ref = pyecloud_nel_mp_ref,
                     pyecloud_fact_clean = pyecloud_fact_clean,
