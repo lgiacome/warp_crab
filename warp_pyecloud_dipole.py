@@ -1,4 +1,4 @@
-def warp_pyecloud_dipole(zlength = 1, nx = 16, ny = 16, nz = 16, n_bunches = 2,
+def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 16, n_bunches = 2,
                          b_spac = 25e-9, beam_gamma = 479., sigmax = 2e-4,
                          sigmay = 2.1e-4, sigmat= 1.000000e-09/4.,
                          bunch_intensity = 1e11, init_num_elecs = 1.e8,
