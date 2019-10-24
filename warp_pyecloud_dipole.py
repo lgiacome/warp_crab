@@ -14,7 +14,7 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 16, n_bunches = 2
     import numpy.random as random
     from warp import picmi
     from scipy.stats import gaussian_kde
-    from warp.particles.Secondaries import Secondaries, top
+    from warp.particles.Secondaries import Secondaries, top, warp
     import matplotlib.pyplot as plt
     import scipy.io as sio
     from io import BytesIO as StringIO
