@@ -1,4 +1,47 @@
-def measure_SEY(Ekin):
+from scipy.constants import m_e as me
+from scipy.constants import e as qe
+import numpy as np
+
+
+def impact_on_sphere(xgen, ygen, zgen, thetagen, phigen, Ekin, R):
+
+    vmod = np.sqrt(2*Ekin*qe/(me))
+    vxgen = vmod * np.sin(thetagen)*np.cos(phigen)
+    vygen = vmod * np.sin(thetagen)*np.sin(phigen)
+    vzgen = vmod * np.cos(thetagen)
+
+    vg = np.array([vxgen, vygen, vzgen])
+    rg = np.array([xgen, ygen, zgen])
+
+    b = 2 * np.dot(vg, rg)/np.dot(vg,vg)
+    c = (np.dot(rg, rg) - R**2)/np.dot(vg,vg)
+
+    t_impact = (-b + np.sqrt(b**2 - 4*c))/2
+
+    r_impact = rg + vg*t_impact
+
+    in_impact = -r_impact/R
+
+    costheta_impact = -np.dot(in_impact, vg)/np.sqrt(np.dot(vg, vg))
+
+    res = {
+        'vmod': vmod,
+        'vxgen': vxgen,
+        'vygen': vygen,
+        'vzgen':  vzgen,
+        'vg': vg,
+        'rg': rg,
+        't_impact': t_impact,
+        'r_impact': r_impact,
+        'in_impact': in_impact,
+        'costheta_impact': costheta_impact}
+
+    return res
+
+
+def measure_SEY(Ekin, Nmp, N_elec_p_mp, sey_params_dict,
+        xgen=0, ygen=0, zgen=0, thetagen=0, phigen=0, tot_t=None, r_sphere = 0.05,
+        flag_video=False):
 
 
     import numpy as np
@@ -14,12 +57,12 @@ def measure_SEY(Ekin):
     from scipy.constants import c as c_light
     from io import BytesIO as StringIO
     from mpi4py import MPI
-    
+
     # Construct PyECLOUD secondary emission object
     import PyECLOUD.sec_emission_model_ECLOUD as seec
-    sey_mod = seec.SEY_model_ECLOUD(Emax=300., del_max=1.8, R0=0.7, E_th=30,
-            sigmafit=1.09, mufit=1.66,
-            secondary_angle_distribution='cosine_3D')
+    sey_mod = seec.SEY_model_ECLOUD(Emax=sey_params_dict['Emax'], del_max=sey_params_dict['del_max'], R0=sey_params_dict['R0'], E_th=sey_params_dict['E_th'],
+            sigmafit=sey_params_dict['sigmafit'], mufit=sey_params_dict['mufit'],
+            secondary_angle_distribution=sey_params_dict['secondary_angle_distribution'])
 
 
 
@@ -35,17 +78,15 @@ def measure_SEY(Ekin):
     # numerics parameters
     ##########################
     # geometry
-    r = 0.005
-    l = 0.1
 
     # --- grid
-    dh = r/10.
-    xmin = -2*r + 0.001
+    dh = r_sphere/10.
+    xmin = -r_sphere - 0.001
     xmax = -xmin
-    ymin = -2*r + 0.001
+    ymin = -r_sphere - 0.001
     ymax = -ymin
-    zmin = -l - 0.001
-    zmax = l
+    zmin = -r_sphere - 0.001
+    zmax = -zmin
 
     nx = (xmax-xmin)/dh
     ny = (xmax-xmin)/dh
@@ -62,7 +103,7 @@ def measure_SEY(Ekin):
     E = E0 + Ekin
     beam_gamma = E/E0
     beam_beta = np.sqrt(1-1/(beam_gamma*beam_gamma))
-    v = beam_beta*c_light 
+    v = beam_beta*c_light
 
     elec_beam = picmi.Species(particle_type = 'electron',
                          particle_shape = 'linear',
@@ -116,8 +157,9 @@ def measure_SEY(Ekin):
     ##########################
     # Simulation setup
     ##########################
-    wall = picmi.warp.YCylinderOut(r,l)
-
+    sphere = picmi.warp.Sphere(r_sphere)
+    box = picmi.warp.Box(xmax-xmin,ymax-ymin,zmax-zmin)
+    wall = box - sphere
     sim = picmi.Simulation(solver = solver,
                            verbose = 1,
                            cfl = 1.0,
@@ -134,19 +176,21 @@ def measure_SEY(Ekin):
 
     #########################
     # Add Dipole
-    #########################
-    bunch_w = 1
+    ########################
 
+    vmod = picmi.warp.clight*np.sqrt(1-1./(beam_gamma**2))
+    vxgen = vmod * np.sin(thetagen)*np.cos(phigen)
+    vygen = vmod * np.sin(thetagen)*np.sin(phigen)
+    vzgen = vmod * np.cos(thetagen)
     def nonlinearsource():
-        NP = 1000*(top.it==3)
-        x = 0*np.ones(NP)
-        y = 0*np.ones(NP)
-        z = 0*np.ones(NP)
-        vx = np.zeros(NP)
-        vy = np.zeros(NP)
-        vz = picmi.warp.clight*np.sqrt(1-1./(beam_gamma**2))
-        elec_beam.wspecies.addparticles(x=x,y=y,z=z,vx=vx,vy=vy,vz=vz,gi = 1./beam_gamma, w=bunch_w)
-
+        Nmp_inj = Nmp*(top.it==3)
+        x = xgen*np.ones(Nmp_inj)
+        y = ygen*np.ones(Nmp_inj)
+        z = zgen*np.ones(Nmp_inj)
+        vx = vxgen*np.ones(Nmp_inj)
+        vy = vygen*np.ones(Nmp_inj)
+        vz = vzgen*np.ones(Nmp_inj)
+        elec_beam.wspecies.addparticles(x=x,y=y,z=z,vx=vx,vy=vy,vz=vz,gi = 1./beam_gamma, w=N_elec_p_mp)
     picmi.warp.installuserinjection(nonlinearsource)
 
 
@@ -162,7 +206,7 @@ def measure_SEY(Ekin):
 
     sec=Secondaries(conductors=sim.conductors,
                     l_usenew=1, pyecloud_secemi_object=sey_mod,
-                    pyecloud_nel_mp_ref=1., pyecloud_fact_clean=1e-6,
+                    pyecloud_nel_mp_ref=N_elec_p_mp, pyecloud_fact_clean=1e-16,
                     pyecloud_fact_split=1.5)
 
     sec.add(incident_species = elec_beam.wspecies,
@@ -179,30 +223,36 @@ def measure_SEY(Ekin):
     top.dt = dh/v
 
     n_step = 0
-    tot_t = 2*r/v
-    tot_nsteps = int(tot_t/top.dt)
-    for n_step in range(tot_nsteps):
+    tot_nsteps = int(np.ceil((tot_t/top.dt)))
+    n_primelecs = []
+    n_secelecs = []
+    n_mp_primelecs = []
+    n_mp_secelecs = []
+    secelecs_dist=[]
+    primelecs_dist = []
+
+    for n_step in range(tot_nsteps+1):
         step(1)
-    secondaries_count = np.sum(secelec.wspecies.getw())
+        n_primelecs.append(np.sum(elec_beam.wspecies.getw()))
+        n_secelecs.append(np.sum(secelec.wspecies.getw()))
+        n_mp_primelecs.append(np.shape(elec_beam.wspecies.getw())[0])
+        n_mp_secelecs.append(np.shape(secelec.wspecies.getw())[0])
+        if flag_video:
+            secelecs_dist.append(np.sum(secelec.wspecies.get_density(), axis=1))    
+            primelecs_dist.append(np.sum(elec_beam.wspecies.get_density(), axis=1))
 
-    return secondaries_count/(100*1000)
+    dict_out = {}
+    dict_out['SEY'] = np.sum(secelec.wspecies.getw())/(Nmp*N_elec_p_mp)
+    dict_out['n_primelecs'] = np.array(n_primelecs)
+    dict_out['n_secelecs'] = np.array(n_secelecs)
+    dict_out['n_mp_primelecs'] = np.array(n_mp_primelecs)
+    dict_out['n_mp_secelecs'] = np.array(n_mp_secelecs)
+    dict_out['secelecs_dist'] = np.array(secelecs_dist)
+    dict_out['primelecs_dist'] = np.array(primelecs_dist)
+    dict_out['xmesh']=solver.solver.xmesh.copy()
+    dict_out['ymesh']=solver.solver.ymesh.copy()
+    dict_out['zmesh']=solver.solver.zmesh.copy()
 
-import numpy as np
-
-ene_array = np.linspace(200,1001,100)
-res = np.zeros_like(ene_array)
-from run_in_separate_process import run_in_separate_process
-import sys
-original = sys.stdout
-from io import BytesIO as StringIO
-text_trap = StringIO()
-
-for ii, ene in enumerate([5]):
-    print(ii)
-    sys.stdout = text_trap
-    res[ii] = run_in_separate_process(measure_SEY, [ene])
-    sys.stdout = original
-import matplotlib.pyplot as plt
-plt.plot(res)
-plt.show()
-
+    #angle_dist =np.arctan(np.divide(secelec.wspecies.getvy(),secelec.wspecies.getvx()))
+    #dict_out['angle_dist'] = angle_dist
+    return dict_out
