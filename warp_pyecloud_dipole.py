@@ -20,6 +20,7 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 16, n_bunches = 2
     from io import BytesIO as StringIO
     from mpi4py import MPI
     from scipy.constants import c as clight
+    import sys
 
     # Construct PyECLOUD secondary emission object
     import PyECLOUD.sec_emission_model_ECLOUD as seec
