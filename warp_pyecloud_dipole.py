@@ -44,7 +44,8 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 16, n_bunches = 2
     ze_dipo = 0.5*z_length
     r = 23.e-3
     h = 18.e-3
-
+    l = 1
+    
     unit = 1e-3
     xmin = -r
     xmax = r
