@@ -45,13 +45,13 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 16, n_bunches = 2
     r = 23.e-3
     h = 18.e-3
 
+    unit = 1e-3
     xmin = -r
     xmax = r
     ymin = -r
     ymax = r
     zmin = zs_dipo-50*unit
     zmax = ze_dipo+50*unit
-    unit = 1e-3
     
     if chamber_type == 'LHC':
         chamber_area = 0.0014664200235342726
