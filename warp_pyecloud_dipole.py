@@ -1,7 +1,7 @@
 def perform_regeneration(target_MP, x_mp,y_mp,z_mp,vx_mp,vy_mp,vz_mp,nel_mp,N_mp):
     return x_mp,y_mp,z_mp,vx_mp,vy_mp,vz_mp,nel_mp,N_mp
 
-def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 30, n_bunches = 5,
+def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 30, n_bunches = 2,
                          b_spac = 25e-9, beam_gamma = 479., sigmax = 2e-4,
                          sigmay = 2.1e-4, sigmat= 1.000000e-09/4.,
                          bunch_intensity = 1e11, init_num_elecs = 1.e5,
@@ -130,9 +130,9 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 30, n_bunches = 5
 
 
 
-    electron_background_dist = picmi.ParticleListDistribution(x0=x0, y0=y0,
-                                                              z0=z0, vx0=vx0,
-                                                              vy0=vy0, vz0=vz0,
+    electron_background_dist = picmi.ParticleListDistribution(x=x0, y=y0,
+                                                              z=z0, vx=vx0,
+                                                              vy=vy0, vz=vz0,
                                                               weight=w0)
                                         
 
@@ -144,7 +144,7 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 30, n_bunches = 5
     secelec = picmi.Species(particle_type = 'electron',
                             particle_shape = 'linear',
                             name = 'Secondary electrons')
-
+   
     ##########################
     # Numeric components
     ##########################
@@ -218,7 +218,6 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 30, n_bunches = 5
 
     sim.add_species(elecb, layout=elecb_layout,
                     initialize_self_field = solver=='EM')
-
     sim.add_species(secelec, layout=None, initialize_self_field=False)
 
     #########################
@@ -282,7 +281,7 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 30, n_bunches = 5
 
 
     def myplots(l_force=0):
-        if l_force or 0==0:#pw.top.it%1==0:
+        if l_force or pw.top.it%10==0:
             plt.close()
             (Nx,Ny,Nz) = np.shape(secelec.wspecies.get_density())
             fig, axs = plt.subplots(1, 2,figsize=(12, 4.5))
@@ -328,7 +327,6 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 30, n_bunches = 5
     t0 = time.time()
 
     # trapping warp std output
-    enable_trap = False
     text_trap = {True: StringIO(), False: sys.stdout}[enable_trap]
     original = sys.stdout
 
@@ -369,7 +367,7 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 30, n_bunches = 5
         sys.stdout = text_trap
         step(1)
         sys.stdout = original
-
+	#print(elecb.wspecies.getvy()[0])
         # store outputs
         secelec_w = secelec.wspecies.getw()
         elecb_w = elecb.wspecies.getw()
