@@ -1,8 +1,11 @@
+def perform_regeneration(target_MP, x_mp,y_mp,z_mp,vx_mp,vy_mp,vz_mp,nel_mp,N_mp):
+    return x_mp,y_mp,z_mp,vx_mp,vy_mp,vz_mp,nel_mp,N_mp
+
 def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 16, n_bunches = 2,
                          b_spac = 25e-9, beam_gamma = 479., sigmax = 2e-4,
                          sigmay = 2.1e-4, sigmat= 1.000000e-09/4.,
                          bunch_intensity = 1e11, init_num_elecs = 1.e8,
-                         init_num_elecs_mp = 10**2, By = 0.53,
+                         init_num_elecs_mp = 11, By = 0.53,
                          pyecloud_nel_mp_ref = 1., dt = 25e-12,
                          pyecloud_fact_clean = 1e-6, pyecloud_fact_split = 1.5,
                          chamber_type = 'rect', flag_save_video = False,
@@ -21,6 +24,8 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 16, n_bunches = 2
     from mpi4py import MPI
     from scipy.constants import c as clight
     import sys
+    import PyECLOUD.myfilemanager as mfm
+    import os
 
     # Construct PyECLOUD secondary emission object
     import PyECLOUD.sec_emission_model_ECLOUD as seec
@@ -81,8 +86,53 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 16, n_bunches = 2
                          particle_shape = 'linear',
                          name = 'beam')
 
-    electron_background_dist = picmi.UniformDistribution(
-                                        lower_bound = [-r,-h,zs_dipo],
+    lower_bound = [-r,-h,zs_dipo]
+    upper_bound = [-r,-h,zs_dipo],
+    temp_file_name = 'temp_mps_info.h5'
+    
+    N_mp_max = 10
+    
+
+    if not os.path.exists(temp_file_name):
+        x0 = random.uniform(lower_bound[0],upper_bound[0],init_num_elecs_mp)
+        y0 = random.uniform(lower_bound[1],upper_bound[1],init_num_elecs_mp)
+        z0 = random.uniform(lower_bound[2],upper_bound[2],init_num_elecs_mp)
+        ux0 = np.zeros(init_num_elecs_mp)
+        uy0 = np.zeros(init_num_elecs_mp)
+        uz0 = np.zeros(init_num_elecs_mp)
+        w0 = init_num_elecs_mp/init_num_elecs_mp*np.ones(init_num_elecs_mp)
+        b_pass_prev = 0
+    else:
+        print('############################################################')
+        print('Temp distribution found. Regenarating and restarting')
+        print('############################################################')
+        dict_init_dist = dict_of_arrays_and_scalar_from_h5(temp_file_name)
+        xold = dict_init_dist['x_mp']
+        yold = dict_init_dist['y_mp']
+        zold = dict_init_dist['z_mp']
+        uxold = dict_init_dist['ux_mp']
+        uyold = dict_init_dist['uy_mp']
+        uzold = dict_init_dist['uz_mp']
+        wold = dict_init_dist['w_mp']
+        numelecs = dict_init_dist['numelecs']
+        elecs_density = dict_init_dist['elecs_density']
+        N_mp = dict_init_dist['N_mp']
+        b_pass_prev = dict_init_dist['b_pass']
+
+        invgamma = np.sqrt(1-picmi.clight**2/(np.square(uxold)+np.square(uyold)+np.square(uzold)))
+        vxold = np.multiply(invgamma,uxold)
+        vyold = np.multiply(invgamma,uxold)
+        vzold = np.multiply(invgamma,uxold)
+
+        x0,y0,z0,vx0,vy0,vz0,w0,N_mp = perform_regeneration(xold,yold,zold,vxold,vyold,vzold,wold)
+
+
+
+    electron_background_dist = picmi.ParticleListDistribution(x0=x0, y0=y0,
+                                                              z0=z0, vx0=vx0,
+                                                              vy0=vy0, vz0=vz0,
+                                                              w=w0)
+                                        
                                         upper_bound = [ r, h,ze_dipo],
                                         density = init_num_elecs/chamber_area)
 
@@ -261,10 +311,12 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 16, n_bunches = 2
     tot_nsteps = int(np.ceil(b_spac*n_bunches/top.dt))
 
     # pre-allocate outputs
-    numelecs = np.zeros(tot_nsteps)
-    elecs_density = np.zeros((tot_nsteps,nx+1,ny+1,3))
-    beam_density = np.zeros((tot_nsteps,nx+1,ny+1,3))
-    N_mp = np.zeros(tot_nsteps)
+    if !os.path.exists('temp_mps_info.h5'):
+        numelecs = np.zeros(tot_nsteps)
+        elecs_density = np.zeros((tot_nsteps,nx+1,ny+1,3))
+        beam_density = np.zeros((tot_nsteps,nx+1,ny+1,3))
+        N_mp = np.zeros(tot_nsteps)
+
     dict_out = {}
 
     # aux variables
@@ -279,13 +331,35 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 16, n_bunches = 2
     original = sys.stdout
 
     for n_step in range(tot_nsteps):
+        # if a passage is starting...
         if n_step/ntsteps_p_bunch > b_pass:
             b_pass+=1
             perc = 10
             print('===========================')
-            print('Bunch passage: %d' %b_pass)
+            print('Bunch passage: %d' %(b_pass+b_pass_prev)
             print('Number of electrons in the dipole: %d' %(np.sum(secelec.wspecies.getw())+np.sum(elecb.wspecies.getw())))
-        
+            if secelecs.wspecies.getn() > N_mp_max:
+                dict_out_temp = {}
+                print('MAXIMUM LIMIT OF MPS HAS BEEN RACHED')
+                print('Please restart the simulation')
+                dict_out_temp['x_mp'] = secelecs.wspecies.getx()
+                dict_out_temp['y_mp'] = secelecs.wspecies.gety()
+                dict_out_temp['z_mp'] = secelecs.wspecies.getz()
+                dict_out_temp['ux_mp'] = secelecs.wspecies.getux()
+                dict_out_temp['uy_mp'] = secelecs.wspecies.getuy()
+                dict_out_temp['uz_mp'] = secelecs.wspecies.getuz()
+                dict_out_temp['w_mp'] = secelec_w
+                
+                dict_out_temp['numelecs'] = numelecs
+                dict_out_temp['elecs_density'] = elecs_density
+                dict_out_temp['N_mp'] = N_mp
+                
+                dict_out_temp['b_pass'] = b_pass
+                
+                filename = 'temp_mps_info.h5'
+
+                mfm.dict_to_h5(dict_out_temp, filename)
+
         if n_step%ntsteps_p_bunch/ntsteps_p_bunch*100>=perc:
             print('%d%% of bunch passage' %perc)
             perc = perc+10
@@ -298,15 +372,21 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 16, n_bunches = 2
         secelec_w = secelec.wspecies.getw()
         elecb_w = elecb.wspecies.getw()
         numelecs[n_step] = np.sum(secelec_w)+np.sum(elecb_w)
-        elecs_density[n_step,:,:,:] = secelec.wspecies.get_density()[:,:,(nz+1)/2-1:(nz+1)/2+2]+ elecb.wspecies.get_density()[:,:,(nz+1)/2-1:(nz+1)/2+2]
+        elecs_density[n_step,:,:,:] = secelec.wspecies.get_density()[:,:,(nz+1)/2-1:(nz+1)/2+2] + elecb.wspecies.get_density()[:,:,(nz+1)/2-1:(nz+1)/2+2]
         N_mp[n_step] = len(secelec_w)+len(elecb_w)
+
 
     t1 = time.time()
     totalt = t1-t0
     dict_out['numelecs'] = numelecs
     dict_out['elecs_density'] = elecs_density
-    sio.savemat('output0.mat',dict_out)
+    dict_out['N_mp'] = N_mp
 
+    mfm.dict_to_h5(dict_out, 'output.h5')
+
+    if os.path.exists('temp_mps_info.h5'):
+        os.remove('temp_mps_info.h5')
+    
     print('Run terminated in %ds' %totalt)
 
 
