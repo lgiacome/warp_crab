@@ -1,11 +1,11 @@
 def perform_regeneration(target_MP, x_mp,y_mp,z_mp,vx_mp,vy_mp,vz_mp,nel_mp,N_mp):
     return x_mp,y_mp,z_mp,vx_mp,vy_mp,vz_mp,nel_mp,N_mp
 
-def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 16, n_bunches = 2,
+def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 30, n_bunches = 5,
                          b_spac = 25e-9, beam_gamma = 479., sigmax = 2e-4,
                          sigmay = 2.1e-4, sigmat= 1.000000e-09/4.,
-                         bunch_intensity = 1e11, init_num_elecs = 1.e8,
-                         init_num_elecs_mp = 11, By = 0.53,
+                         bunch_intensity = 1e11, init_num_elecs = 1.e5,
+                         init_num_elecs_mp = 10**2, By = 0.53,
                          pyecloud_nel_mp_ref = 1., dt = 25e-12,
                          pyecloud_fact_clean = 1e-6, pyecloud_fact_split = 1.5,
                          chamber_type = 'rect', flag_save_video = False,
@@ -50,13 +50,14 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 16, n_bunches = 2
     ze_dipo = 0.5*z_length
     r = 23.e-3
     h = 18.e-3
-    l = 1
+    l = z_length
     
     unit = 1e-3
-    xmin = -r
-    xmax = r
-    ymin = -r
-    ymax = r
+    ghost = 1e-3
+    xmin = -r-ghost
+    xmax = r+ghost
+    ymin = -r-ghost
+    ymax = r+ghost
     zmin = zs_dipo-50*unit
     zmax = ze_dipo+50*unit
     
@@ -87,7 +88,7 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 16, n_bunches = 2
                          name = 'beam')
 
     lower_bound = [-r,-h,zs_dipo]
-    upper_bound = [-r,-h,zs_dipo],
+    upper_bound = [r,h,ze_dipo]
     temp_file_name = 'temp_mps_info.h5'
     
     N_mp_max = 10
@@ -97,10 +98,11 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 16, n_bunches = 2
         x0 = random.uniform(lower_bound[0],upper_bound[0],init_num_elecs_mp)
         y0 = random.uniform(lower_bound[1],upper_bound[1],init_num_elecs_mp)
         z0 = random.uniform(lower_bound[2],upper_bound[2],init_num_elecs_mp)
-        ux0 = np.zeros(init_num_elecs_mp)
-        uy0 = np.zeros(init_num_elecs_mp)
-        uz0 = np.zeros(init_num_elecs_mp)
-        w0 = init_num_elecs_mp/init_num_elecs_mp*np.ones(init_num_elecs_mp)
+        vx0 = np.zeros(init_num_elecs_mp)
+        vy0 = np.zeros(init_num_elecs_mp)
+        vz0 = np.zeros(init_num_elecs_mp)
+
+        w0 = float(init_num_elecs)/float(init_num_elecs_mp)*np.ones(init_num_elecs_mp)
         b_pass_prev = 0
     else:
         print('############################################################')
@@ -131,10 +133,8 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 16, n_bunches = 2
     electron_background_dist = picmi.ParticleListDistribution(x0=x0, y0=y0,
                                                               z0=z0, vx0=vx0,
                                                               vy0=vy0, vz0=vz0,
-                                                              w=w0)
+                                                              weight=w0)
                                         
-                                        upper_bound = [ r, h,ze_dipo],
-                                        density = init_num_elecs/chamber_area)
 
     elecb = picmi.Species(particle_type = 'electron',
                           particle_shape = 'linear',
@@ -200,8 +200,6 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 16, n_bunches = 2
 
     elif chamber_type == 'LHC':
         pipe = picmi.warp.ZCylinderOut(r,l,condid=1)
-        ycent_upper =  h + 0.5*(ymax+h)
-        ycent_lower =  h - 0.5*(ymin+h)
         upper_box = picmi.warp.YPlane(y0=h,ysign=1,condid=1)
         lower_box = picmi.warp.YPlane(y0=-h,ysign=-1,condid=1)
 
@@ -252,10 +250,12 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 16, n_bunches = 2
     ##########################
     # simulation run
     ##########################
+    
     sim.step(1)
+    
     solver.solver.installconductor(sim.conductors, dfill = picmi.warp.largepos)
     sim.step(1)
-
+    
     pp = warp.ParticleScraper(sim.conductors,lsavecondid=1,lsaveintercept=1,lcollectlpdata=1)
 
     sec=Secondaries(conductors = sim.conductors, l_usenew = 1,
@@ -272,6 +272,7 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 16, n_bunches = 2
             emitted_species = secelec.wspecies,
             conductor       = sim.conductors)
 
+   
     # just some shortcuts
     pw = picmi.warp
     step = pw.step
@@ -311,7 +312,7 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 16, n_bunches = 2
     tot_nsteps = int(np.ceil(b_spac*n_bunches/top.dt))
 
     # pre-allocate outputs
-    if !os.path.exists('temp_mps_info.h5'):
+    if not os.path.exists('temp_mps_info.h5'):
         numelecs = np.zeros(tot_nsteps)
         elecs_density = np.zeros((tot_nsteps,nx+1,ny+1,3))
         beam_density = np.zeros((tot_nsteps,nx+1,ny+1,3))
@@ -327,6 +328,7 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 16, n_bunches = 2
     t0 = time.time()
 
     # trapping warp std output
+    enable_trap = False
     text_trap = {True: StringIO(), False: sys.stdout}[enable_trap]
     original = sys.stdout
 
@@ -336,18 +338,18 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 16, n_bunches = 2
             b_pass+=1
             perc = 10
             print('===========================')
-            print('Bunch passage: %d' %(b_pass+b_pass_prev)
+            print('Bunch passage: %d' %(b_pass+b_pass_prev))
             print('Number of electrons in the dipole: %d' %(np.sum(secelec.wspecies.getw())+np.sum(elecb.wspecies.getw())))
-            if secelecs.wspecies.getn() > N_mp_max:
+            if secelec.wspecies.getn() > N_mp_max:
                 dict_out_temp = {}
                 print('MAXIMUM LIMIT OF MPS HAS BEEN RACHED')
                 print('Please restart the simulation')
-                dict_out_temp['x_mp'] = secelecs.wspecies.getx()
-                dict_out_temp['y_mp'] = secelecs.wspecies.gety()
-                dict_out_temp['z_mp'] = secelecs.wspecies.getz()
-                dict_out_temp['ux_mp'] = secelecs.wspecies.getux()
-                dict_out_temp['uy_mp'] = secelecs.wspecies.getuy()
-                dict_out_temp['uz_mp'] = secelecs.wspecies.getuz()
+                dict_out_temp['x_mp'] = secelec.wspecies.getx()
+                dict_out_temp['y_mp'] = secelec.wspecies.gety()
+                dict_out_temp['z_mp'] = secelec.wspecies.getz()
+                dict_out_temp['ux_mp'] = secelec.wspecies.getux()
+                dict_out_temp['uy_mp'] = secelec.wspecies.getuy()
+                dict_out_temp['uz_mp'] = secelec.wspecies.getuz()
                 dict_out_temp['w_mp'] = secelec_w
                 
                 dict_out_temp['numelecs'] = numelecs
