@@ -1,12 +1,11 @@
-def perform_regeneration(target_MP, x_mp,y_mp,z_mp,vx_mp,vy_mp,vz_mp,nel_mp,N_mp):
-    return x_mp,y_mp,z_mp,vx_mp,vy_mp,vz_mp,nel_mp,N_mp
+from perform_regeneration import perform_regeneration
 
 def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 30, n_bunches = 10,
                          b_spac = 25e-9, beam_gamma = 479., sigmax = 2e-4,
                          sigmay = 2.1e-4, sigmat= 1.000000e-09/4.,
                          bunch_intensity = 1e11, init_num_elecs = 1.e5,
-                         init_num_elecs_mp = 10**2, By = 0.53,
-                         pyecloud_nel_mp_ref = 1., dt = 25e-12,
+                         init_num_elecs_mp = 10**3, By = 0.53,
+                         pyecloud_nel_mp_ref = 100., dt = 25e-12,
                          pyecloud_fact_clean = 1e-6, pyecloud_fact_split = 1.5,
                          chamber_type = 'rect', flag_save_video = False,
                          enable_trap = True, Emax = 300., del_max = 1.8,
@@ -90,8 +89,8 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 30, n_bunches = 1
     upper_bound = [r,h,ze_dipo]
     temp_file_name = 'temp_mps_info.h5'
     
-    N_mp_max = 100
-    
+    N_mp_max = 1000
+    N_mp_target = 100
     ########################################################
     # if checkopoint is found reload it, 
     # otherwise start from scratch
@@ -130,8 +129,8 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 30, n_bunches = 1
         vyold = np.multiply(invgamma,uxold)
         vzold = np.multiply(invgamma,uxold)
         # perform the regeneration
-	x0,y0,z0,vx0,vy0,vz0,w0,N_mpaa = perform_regeneration(0,xold,yold,zold,vxold,vyold,vzold,wold,0)
-
+	x0,y0,z0,vx0,vy0,vz0,w0,N_mpaa = perform_regeneration(N_mp_target,xold,yold,zold,vxold,vyold,vzold,wold)
+	print('DEBUG N_mp: %d' %len(x0))
     electron_background_dist = picmi.ParticleListDistribution(x=x0, y=y0,
                                                               z=z0, vx=vx0,
                                                               vy=vy0, vz=vz0,
@@ -250,15 +249,9 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 30, n_bunches = 1
     ##########################
     # simulation run
     ##########################
-    print('Number of electrons in the dipole: %d' %(np.sum(secelec.wspecies.getw())+np.sum(elecb.wspecies.getw())))
-    print('Number of macroparticles: %d' %(secelec.wspecies.getn()+elecb.wspecies.getn()))	   
     sim.step(1)
-    print('Number of electrons in the dipole: %d' %(np.sum(secelec.wspecies.getw())+np.sum(elecb.wspecies.getw())))
-    print('Number of macroparticles: %d' %(secelec.wspecies.getn()+elecb.wspecies.getn()))	   
-    
+    solver.solver.installconductor(sim.conductors, dfill = picmi.warp.largepos)
     sim.step(1)
-    print('Number of electrons in the dipole: %d' %(np.sum(secelec.wspecies.getw())+np.sum(elecb.wspecies.getw())))
-    print('Number of macroparticles: %d' %(secelec.wspecies.getn()+elecb.wspecies.getn()))	   
    
     pp = warp.ParticleScraper(sim.conductors,lsavecondid=1,lsaveintercept=1,lcollectlpdata=1)
 
@@ -306,16 +299,15 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 30, n_bunches = 1
             n_step = top.time/top.dt
             figname = 'images/%d.png' %n_step
             plt.savefig(figname)
-            print('plot')
 
     if flag_save_video:
         pw.installafterstep(myplots)
         myplots(1)
 
     ntsteps_p_bunch = b_spac/top.dt
-    tot_nsteps = int(np.ceil(b_spac*(n_bunches-b_pass_prev)/top.dt))
+    tot_nsteps = int(np.ceil(b_spac*(n_bunches)/top.dt))
     t_start = b_pass_prev*b_spac
-    tstep_start = int(t_start/top.dt)
+    tstep_start = int(round(t_start/top.dt))
 
 
     # pre-allocate outputs
@@ -340,15 +332,12 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 30, n_bunches = 1
 
     for n_step in range(tstep_start,tot_nsteps):
         # if a passage is starting...
-        if n_step/ntsteps_p_bunch > b_pass+b_pass_prev:
+        if n_step/ntsteps_p_bunch >= b_pass+b_pass_prev:
             b_pass+=1
             perc = 10
-	    print('===========================')
-            print('Bunch passage: %d' %(b_pass+b_pass_prev))
-            print('Number of electrons in the dipole: %d' %(np.sum(secelec.wspecies.getw())+np.sum(elecb.wspecies.getw())))
-            print('Number of macroparticles: %d' %(secelec.wspecies.getn()+elecb.wspecies.getn()))
 	    if secelec.wspecies.getn() > N_mp_max:
                 dict_out_temp = {}
+		print('Number of macroparticles: %d' %(secelec.wspecies.getn()+elecb.wspecies.getn()))
                 print('MAXIMUM LIMIT OF MPS HAS BEEN RACHED')
                 print('Please restart the simulation')
                 dict_out_temp['x_mp'] = np.concatenate((secelec.wspecies.getx(),elecb.wspecies.getx()))
@@ -371,7 +360,12 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 30, n_bunches = 1
 	
 		return
 
-        if n_step%ntsteps_p_bunch/ntsteps_p_bunch*100>=perc:
+	    print('===========================')
+            print('Bunch passage: %d' %(b_pass+b_pass_prev))
+            print('Number of electrons in the dipole: %d' %(np.sum(secelec.wspecies.getw())+np.sum(elecb.wspecies.getw())))
+            print('Number of macroparticles: %d' %(secelec.wspecies.getn()+elecb.wspecies.getn()))
+        
+        if n_step%ntsteps_p_bunch/ntsteps_p_bunch*100>perc:
             print('%d%% of bunch passage' %perc)
             perc = perc+10
         
@@ -382,9 +376,9 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 30, n_bunches = 1
         # store outputs
         secelec_w = secelec.wspecies.getw()
         elecb_w = elecb.wspecies.getw()
-        numelecs[n_step + tstep_start] = np.sum(secelec_w)+np.sum(elecb_w)
-        elecs_density[n_step + tstep_start,:,:,:] = secelec.wspecies.get_density()[:,:,(nz+1)/2-1:(nz+1)/2+2] + elecb.wspecies.get_density()[:,:,(nz+1)/2-1:(nz+1)/2+2]
-	N_mp[n_step + tstep_start] = len(secelec_w)+len(elecb_w)
+        numelecs[n_step] = np.sum(secelec_w)+np.sum(elecb_w)
+        elecs_density[n_step,:,:,:] = secelec.wspecies.get_density()[:,:,(nz+1)/2-1:(nz+1)/2+2] + elecb.wspecies.get_density()[:,:,(nz+1)/2-1:(nz+1)/2+2]
+	N_mp[n_step] = len(secelec_w)+len(elecb_w)
 
     t1 = time.time()
     totalt = t1-t0
