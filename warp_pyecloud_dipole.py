@@ -11,7 +11,7 @@ def warp_pyecloud_dipole(z_length = None, nx = None, ny = None, nz =None, n_bunc
                          enable_trap = True, Emax = None, del_max = None,
                          R0 = None, E_th = None, sigmafit = None, mufit = None,
                          secondary_angle_distribution = None, N_mp_max = None,
-    			 N_mp_target = None):
+    			 N_mp_target = None, flag_checkpointing = False, checkpoints = None):
     
     import numpy as np
     import numpy.random as random
@@ -110,26 +110,24 @@ def warp_pyecloud_dipole(z_length = None, nx = None, ny = None, nz =None, n_bunc
         print('############################################################')
         dict_init_dist = mfm.dict_of_arrays_and_scalar_from_h5(temp_file_name)
 	# Load particles status
-        xold = dict_init_dist['x_mp']
-        yold = dict_init_dist['y_mp']
-        zold = dict_init_dist['z_mp']
-        uxold = dict_init_dist['ux_mp']
-        uyold = dict_init_dist['uy_mp']
-        uzold = dict_init_dist['uz_mp']
-        wold = dict_init_dist['w_mp']
+        x0 = dict_init_dist['x_mp']
+        y0 = dict_init_dist['y_mp']
+        z0 = dict_init_dist['z_mp']
+        ux0 = dict_init_dist['ux_mp']
+        uy0 = dict_init_dist['uy_mp']
+        uz0 = dict_init_dist['uz_mp']
+        w0 = dict_init_dist['w_mp']
 	# Reload the outputs and other auxiliary stuff
         numelecs = dict_init_dist['numelecs']
         elecs_density = dict_init_dist['elecs_density']
         N_mp = dict_init_dist['N_mp']
         b_pass_prev = dict_init_dist['b_pass'] -1
 	# compute the velocities
-        invgamma = np.sqrt(1-picmi.clight**2/(np.square(uxold)+np.square(uyold)+np.square(uzold)))
-        vxold = np.multiply(invgamma,uxold)
-        vyold = np.multiply(invgamma,uxold)
-        vzold = np.multiply(invgamma,uxold)
-        # perform the regeneration
-	x0,y0,z0,vx0,vy0,vz0,w0,N_mpaa = perform_regeneration(N_mp_target,xold,yold,zold,vxold,vyold,vzold,wold)
-	print('DEBUG N_mp: %d' %len(x0))
+        invgamma = np.sqrt(1-picmi.clight**2/(np.square(ux0)+np.square(uy0)+np.square(uz0)))
+        vx0 = np.multiply(invgamma,ux0)
+        vy0 = np.multiply(invgamma,uy0)
+        vz0 = np.multiply(invgamma,uy0)
+
     electron_background_dist = picmi.ParticleListDistribution(x=x0, y=y0,
                                                               z=z0, vx=vx0,
                                                               vy=vy0, vz=vz0,
@@ -333,42 +331,75 @@ def warp_pyecloud_dipole(z_length = None, nx = None, ny = None, nz =None, n_bunc
         if n_step/ntsteps_p_bunch >= b_pass+b_pass_prev:
             b_pass+=1
             perc = 10
+	    # Perform regeneration if needed
 	    if secelec.wspecies.getn() > N_mp_max:
                 dict_out_temp = {}
 		print('Number of macroparticles: %d' %(secelec.wspecies.getn()+elecb.wspecies.getn()))
                 print('MAXIMUM LIMIT OF MPS HAS BEEN RACHED')
                 
-                perform_regeneration(N_mp_target, secelec.wspecies, sec) 
+                perform_regeneration(N_mp_target, secelec.wspecies, sec)
+ 
+	    # Save stuff if checkpoint
+            if flag_checkpointing and np.any(checkpoints == b_pass + b_pass_prev) and b_pass>1:
+                dict_out_temp = {}
+                print('Saving a checkpoint!')
+        	secelec_w = secelec.wspecies.getw()
+                dict_out_temp['x_mp'] = np.concatenate((secelec.wspecies.getx(),elecb.wspecies.getx()))
+                dict_out_temp['y_mp'] = np.concatenate((secelec.wspecies.gety(),elecb.wspecies.gety()))
+                dict_out_temp['z_mp'] = np.concatenate((secelec.wspecies.getz(),elecb.wspecies.gety()))
+                dict_out_temp['ux_mp'] = np.concatenate((secelec.wspecies.getux(),elecb.wspecies.getux()))
+                dict_out_temp['uy_mp'] = np.concatenate((secelec.wspecies.getuy(),elecb.wspecies.getuy()))
+                dict_out_temp['uz_mp'] = np.concatenate((secelec.wspecies.getuz(),elecb.wspecies.getuz()))
+                dict_out_temp['w_mp'] = np.concatenate((secelec_w,elecb.wspecies.getw()))
+
+                dict_out_temp['numelecs'] = numelecs
+                dict_out_temp['elecs_density'] = elecs_density
+                dict_out_temp['N_mp'] = N_mp
+
+                dict_out_temp['b_pass'] = b_pass + b_pass_prev
+
+                filename = 'temp_mps_info.h5'
+
+    		if os.path.exists(filename):
+        		os.remove(filename)
+
+                mfm.dict_to_h5(dict_out_temp, filename)
 
 	    print('===========================')
             print('Bunch passage: %d' %(b_pass+b_pass_prev))
             print('Number of electrons in the dipole: %d' %(np.sum(secelec.wspecies.getw())+np.sum(elecb.wspecies.getw())))
             print('Number of macroparticles: %d' %(secelec.wspecies.getn()+elecb.wspecies.getn()))
-        
+            print('Number of macroparticles: %d' %(elecb.wspecies.getn()))
+            print('Number of macroparticles: %d' %(secelec.wspecies.getn()))
+ 
         if n_step%ntsteps_p_bunch/ntsteps_p_bunch*100>perc:
             print('%d%% of bunch passage' %perc)
-            print(secelec.wspecies.getn())
+	    print(secelec.wspecies.getn())
             perc = perc+10
         
+	# Perform a step
         sys.stdout = text_trap
         step(1)
         sys.stdout = original
-	#print(elecb.wspecies.getvy()[0])
-        # store outputs
-        secelec_w = secelec.wspecies.getw()
+        
+	# Store stuff to be saved
+	secelec_w = secelec.wspecies.getw()
         elecb_w = elecb.wspecies.getw()
         numelecs[n_step] = np.sum(secelec_w)+np.sum(elecb_w)
         elecs_density[n_step,:,:,:] = secelec.wspecies.get_density()[:,:,(nz+1)/2-1:(nz+1)/2+2] + elecb.wspecies.get_density()[:,:,(nz+1)/2-1:(nz+1)/2+2]
 	N_mp[n_step] = len(secelec_w)+len(elecb_w)
 
+    # Timer
     t1 = time.time()
     totalt = t1-t0
+    # Dump outputs
     dict_out['numelecs'] = numelecs
     dict_out['elecs_density'] = elecs_density
     dict_out['N_mp'] = N_mp
 
     mfm.dict_to_h5(dict_out, 'output.h5')
 
+    # Delete checkpoint if found
     if os.path.exists('temp_mps_info.h5'):
         os.remove('temp_mps_info.h5')
     
