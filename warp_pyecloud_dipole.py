@@ -1,16 +1,17 @@
 from perform_regeneration import perform_regeneration
 
-def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 30, n_bunches = 10,
-                         b_spac = 25e-9, beam_gamma = 479., sigmax = 2e-4,
-                         sigmay = 2.1e-4, sigmat= 1.000000e-09/4.,
-                         bunch_intensity = 1e11, init_num_elecs = 1.e5,
-                         init_num_elecs_mp = 10**3, By = 0.53,
-                         pyecloud_nel_mp_ref = 100., dt = 25e-12,
-                         pyecloud_fact_clean = 1e-6, pyecloud_fact_split = 1.5,
-                         chamber_type = 'rect', flag_save_video = False,
-                         enable_trap = True, Emax = 300., del_max = 1.8,
-                         R0 = 0.7, E_th = 30, sigmafit = 1.09, mufit = 1.66,
-                         secondary_angle_distribution = 'cosine_3D'):
+def warp_pyecloud_dipole(z_length = None, nx = None, ny = None, nz =None, n_bunches = None,
+                         b_spac = None, beam_gamma = None, sigmax = None,
+                         sigmay = None, sigmat = None,
+                         bunch_intensity = None, init_num_elecs = None,
+                         init_num_elecs_mp = None, By = None,
+                         pyecloud_nel_mp_ref = None, dt = None,
+                         pyecloud_fact_clean = None, pyecloud_fact_split = None,
+                         chamber_type = None, flag_save_video = None,
+                         enable_trap = True, Emax = None, del_max = None,
+                         R0 = None, E_th = None, sigmafit = None, mufit = None,
+                         secondary_angle_distribution = None, N_mp_max = None,
+    			 N_mp_target = None):
     
     import numpy as np
     import numpy.random as random
@@ -89,8 +90,6 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 30, n_bunches = 1
     upper_bound = [r,h,ze_dipo]
     temp_file_name = 'temp_mps_info.h5'
     
-    N_mp_max = 1000
-    N_mp_target = 100
     ########################################################
     # if checkopoint is found reload it, 
     # otherwise start from scratch
@@ -268,8 +267,7 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 30, n_bunches = 1
     sec.add(incident_species = secelec.wspecies,
             emitted_species = secelec.wspecies,
             conductor       = sim.conductors)
-
-   
+    
     # just some shortcuts
     pw = picmi.warp
     step = pw.step
@@ -339,26 +337,8 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 30, n_bunches = 1
                 dict_out_temp = {}
 		print('Number of macroparticles: %d' %(secelec.wspecies.getn()+elecb.wspecies.getn()))
                 print('MAXIMUM LIMIT OF MPS HAS BEEN RACHED')
-                print('Please restart the simulation')
-                dict_out_temp['x_mp'] = np.concatenate((secelec.wspecies.getx(),elecb.wspecies.getx()))
-                dict_out_temp['y_mp'] = np.concatenate((secelec.wspecies.gety(),elecb.wspecies.gety()))
-                dict_out_temp['z_mp'] = np.concatenate((secelec.wspecies.getz(),elecb.wspecies.gety()))
-                dict_out_temp['ux_mp'] = np.concatenate((secelec.wspecies.getux(),elecb.wspecies.getux()))
-                dict_out_temp['uy_mp'] = np.concatenate((secelec.wspecies.getuy(),elecb.wspecies.getuy()))
-                dict_out_temp['uz_mp'] = np.concatenate((secelec.wspecies.getuz(),elecb.wspecies.getuz()))
-                dict_out_temp['w_mp'] = np.concatenate((secelec_w,elecb.wspecies.getw()))
                 
-                dict_out_temp['numelecs'] = numelecs
-                dict_out_temp['elecs_density'] = elecs_density
-                dict_out_temp['N_mp'] = N_mp
-                
-                dict_out_temp['b_pass'] = b_pass + b_pass_prev
-                
-                filename = 'temp_mps_info.h5'
-
-                mfm.dict_to_h5(dict_out_temp, filename)
-	
-		return
+                perform_regeneration(N_mp_target, secelec.wspecies, sec) 
 
 	    print('===========================')
             print('Bunch passage: %d' %(b_pass+b_pass_prev))
@@ -367,6 +347,7 @@ def warp_pyecloud_dipole(z_length = 1., nx = 16, ny = 16, nz = 30, n_bunches = 1
         
         if n_step%ntsteps_p_bunch/ntsteps_p_bunch*100>perc:
             print('%d%% of bunch passage' %perc)
+            print(secelec.wspecies.getn())
             perc = perc+10
         
         sys.stdout = text_trap
