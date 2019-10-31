@@ -369,12 +369,9 @@ def warp_pyecloud_dipole(z_length = None, nx = None, ny = None, nz =None, n_bunc
             print('Bunch passage: %d' %(b_pass+b_pass_prev))
             print('Number of electrons in the dipole: %d' %(np.sum(secelec.wspecies.getw())+np.sum(elecb.wspecies.getw())))
             print('Number of macroparticles: %d' %(secelec.wspecies.getn()+elecb.wspecies.getn()))
-            print('Number of macroparticles: %d' %(elecb.wspecies.getn()))
-            print('Number of macroparticles: %d' %(secelec.wspecies.getn()))
  
         if n_step%ntsteps_p_bunch/ntsteps_p_bunch*100>perc:
             print('%d%% of bunch passage' %perc)
-	    print(secelec.wspecies.getn())
             perc = perc+10
         
 	# Perform a step
@@ -397,7 +394,7 @@ def warp_pyecloud_dipole(z_length = None, nx = None, ny = None, nz =None, n_bunc
     dict_out['elecs_density'] = elecs_density
     dict_out['N_mp'] = N_mp
 
-    mfm.dict_to_h5(dict_out, 'output.h5')
+    #mfm.dict_to_h5(dict_out, 'output.h5')
 
     # Delete checkpoint if found
     if os.path.exists('temp_mps_info.h5'):
