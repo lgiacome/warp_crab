@@ -1,8 +1,8 @@
 from perform_regeneration import perform_regeneration
 
-def warp_pyecloud_dipole(z_length = None, nx = None, ny = None, nz =None, n_bunches = None,
-                         b_spac = None, beam_gamma = None, sigmax = None,
-                         sigmay = None, sigmat = None,
+def warp_pyecloud_dipole(z_length = None, nx = None, ny = None, nz =None, dh_t = None,
+                         n_bunches = None, b_spac = None, beam_gamma = None,
+                         sigmax = None, sigmay = None, sigmat = None,
                          bunch_intensity = None, init_num_elecs = None,
                          init_num_elecs_mp = None, By = None,
                          pyecloud_nel_mp_ref = None, dt = None,
@@ -12,7 +12,7 @@ def warp_pyecloud_dipole(z_length = None, nx = None, ny = None, nz =None, n_bunc
                          R0 = None, E_th = None, sigmafit = None, mufit = None,
                          secondary_angle_distribution = None, N_mp_max = None,
                  N_mp_target = None, flag_checkpointing = False, checkpoints = None,
-             flag_output = False):
+             flag_output = False, bunch_macro_particles = None, t_offs = None):
     
     import numpy as np
     import numpy.random as random
@@ -53,13 +53,13 @@ def warp_pyecloud_dipole(z_length = None, nx = None, ny = None, nz =None, n_bunc
     l = z_length
     
     unit = 1e-3
-    ghost = 1e-3
-    xmin = -r-ghost
-    xmax = r+ghost
-    ymin = -r-ghost
+    ghost = 4e-4
+    xmin = -r - ghost
+    xmax = r + ghost
+    ymin = -r - ghost
     ymax = r+ghost
-    zmin = zs_dipo-50*unit
-    zmax = ze_dipo+50*unit
+    zmin = zs_dipo - 50*unit
+    zmax = ze_dipo + 50*unit
     
     if chamber_type == 'LHC':
         chamber_area = 0.0014664200235342726
@@ -70,10 +70,7 @@ def warp_pyecloud_dipole(z_length = None, nx = None, ny = None, nz =None, n_bunc
     # Beam parameters
     ##########################
     sigmaz = sigmat*picmi.clight
-    t_offs = b_spac-6*sigmat
-    bunch_w = 1e8
-    bunch_macro_particles = bunch_intensity/bunch_w
-    
+    bunch_w = bunch_intensity/bunch_macro_particles
     #######################################################
     # compute beam size from normalized emittance and beta
     # Uncomment if data available
@@ -95,39 +92,39 @@ def warp_pyecloud_dipole(z_length = None, nx = None, ny = None, nz =None, n_bunc
     # if checkopoint is found reload it, 
     # otherwise start from scratch
     ########################################################
-    if not os.path.exists(temp_file_name):
+    if flag_checkpointing and os.path.exists(temp_file_name):
+        print('############################################################')
+        print('Temp distribution found. Regenarating and restarting')
+        print('############################################################')
+        dict_init_dist = sio.loadmat(temp_file_name)
+        # Load particles status
+        x0 = dict_init_dist['x_mp'][0]
+        y0 = dict_init_dist['y_mp'][0]
+        z0 = dict_init_dist['z_mp'][0]
+        ux0 = dict_init_dist['ux_mp'][0]
+        uy0 = dict_init_dist['uy_mp'][0]
+        uz0 = dict_init_dist['uz_mp'][0]
+        w0 = dict_init_dist['w_mp'][0]
+        # compute the velocities
+        invgamma = np.sqrt(1-picmi.clight**2/(np.square(ux0)+np.square(uy0)+np.square(uz0)))
+        vx0 = np.multiply(invgamma,ux0)
+        vy0 = np.multiply(invgamma,uy0)
+        vz0 = np.multiply(invgamma,uy0)
+        # Reload the outputs and other auxiliary stuff
+        if flag_output:
+            numelecs = dict_init_dist['numelecs'][0]
+            N_mp = dict_init_dist['N_mp'][0]
+            b_pass_prev = dict_init_dist['b_pass'] -1
+    else:
         x0 = random.uniform(lower_bound[0],upper_bound[0],init_num_elecs_mp)
         y0 = random.uniform(lower_bound[1],upper_bound[1],init_num_elecs_mp)
         z0 = random.uniform(lower_bound[2],upper_bound[2],init_num_elecs_mp)
         vx0 = np.zeros(init_num_elecs_mp)
         vy0 = np.zeros(init_num_elecs_mp)
-    # Initialize with a super small velocity to avoid warning in Secondaries.py
-        vz0 = 0.0001*np.ones(init_num_elecs_mp)
-
+        # Initialize with a super small velocity to avoid warning in Secondaries.py
+        vz0 = np.ones(init_num_elecs_mp)
         w0 = float(init_num_elecs)/float(init_num_elecs_mp)
         b_pass_prev = 0
-    else:
-        print('############################################################')
-        print('Temp distribution found. Regenarating and restarting')
-        print('############################################################')
-        dict_init_dist = sio.loadmat(temp_file_name)
-    # Load particles status
-        x0 = dict_init_dist['x_mp']
-        y0 = dict_init_dist['y_mp']
-        z0 = dict_init_dist['z_mp']
-        ux0 = dict_init_dist['ux_mp']
-        uy0 = dict_init_dist['uy_mp']
-        uz0 = dict_init_dist['uz_mp']
-        w0 = dict_init_dist['w_mp']
-    # Reload the outputs and other auxiliary stuff
-        numelecs = dict_init_dist['numelecs']
-        N_mp = dict_init_dist['N_mp']
-        b_pass_prev = dict_init_dist['b_pass'] -1
-    # compute the velocities
-        invgamma = np.sqrt(1-picmi.clight**2/(np.square(ux0)+np.square(uy0)+np.square(uz0)))
-        vx0 = np.multiply(invgamma,ux0)
-        vy0 = np.multiply(invgamma,uy0)
-        vz0 = np.multiply(invgamma,uy0)
 
     electron_background_dist = picmi.ParticleListDistribution(x=x0, y=y0,
                                                               z=z0, vx=vx0,
@@ -197,7 +194,10 @@ def warp_pyecloud_dipole(z_length = None, nx = None, ny = None, nz =None, n_bunc
         sim.conductors = upper_box + lower_box + left_box + right_box
 
     elif chamber_type == 'LHC':
-        pipe = picmi.warp.ZCylinderOut(r,l,condid=1)
+        pipe_annulus = picmi.warp.ZAnnulus(rmin = r, rmax    = r+ghost, length  = l, 
+                            voltage = 0., xcent   = 0., ycent   = 0.,
+                            zcent   = 0., condid  = 1)
+
         upper_box = picmi.warp.YPlane(y0=h,ysign=1,condid=1)
         lower_box = picmi.warp.YPlane(y0=-h,ysign=-1,condid=1)
 
@@ -205,6 +205,20 @@ def warp_pyecloud_dipole(z_length = None, nx = None, ny = None, nz =None, n_bunc
                                warp_initialize_solver_after_generate = 1)
 
         sim.conductors = pipe+upper_box+lower_box
+
+    elif chamber_type == 'circle':
+        upper_box = picmi.warp.YPlane(y0=h+ghost/2.,ysign=-1,condid=1)
+        lower_box = picmi.warp.YPlane(y0=-h-ghost/2.,ysign=1,condid=1)
+        left_box = picmi.warp.XPlane(x0=r+ghost/2,xsign=-1,condid=1)
+        right_box = picmi.warp.XPlane(x0=-r-ghost/2,xsign=1,condid=1)
+        box = upper_box*lower_box*left_box*right_box
+        pipe = picmi.warp.ZCylinder(r,l,condid=1)
+        out_pipe = box-pipe
+
+        sim = picmi.Simulation(solver = solver, verbose = 1, cfl = 1.0,
+                               warp_initialize_solver_after_generate = 1)
+
+        sim.conductors = out_pipe
 
     beam_layout = picmi.PseudoRandomLayout(n_macroparticles = 10**5, seed = 3)
 
@@ -226,8 +240,8 @@ def warp_pyecloud_dipole(z_length = None, nx = None, ny = None, nz =None, n_bunc
     def time_prof(t):
         val = 0
         sigmat = sigmaz/picmi.clight
-        for i in range(1,n_bunches+1):
-            val += bunch_macro_particles*1./np.sqrt(2*np.pi*sigmat*sigmat)*np.exp(-(t-i*b_spac+t_offs)*(t-i*b_spac+t_offs)/(2*sigmat*sigmat))*picmi.warp.top.dt
+        for i in range(0,n_bunches):
+            val += bunch_macro_particles*1./np.sqrt(2*np.pi*sigmat*sigmat)*np.exp(-(t-i*b_spac-t_offs)*(t-i*b_spac-t_offs)/(2*sigmat*sigmat))*picmi.warp.top.dt
         return val
 
     def nonlinearsource():
@@ -266,6 +280,8 @@ def warp_pyecloud_dipole(z_length = None, nx = None, ny = None, nz =None, n_bunc
             emitted_species = secelec.wspecies,
             conductor       = sim.conductors)
 
+    #Subcycle(10)
+    
     # just some shortcuts
     pw = picmi.warp
     step = pw.step
@@ -323,21 +339,30 @@ def warp_pyecloud_dipole(z_length = None, nx = None, ny = None, nz =None, n_bunc
     # trapping warp std output
     text_trap = {True: StringIO(), False: sys.stdout}[enable_trap]
     original = sys.stdout
-
+    
     for n_step in range(tstep_start,tot_nsteps):
         # if a passage is starting...
         if n_step/ntsteps_p_bunch >= b_pass+b_pass_prev:
             b_pass+=1
             perc = 10
+            if b_pass>1:
+                t_pass_1 = time.time()
+                t_pass = t_pass_1-t_pass_0
+            t_pass_0 = time.time()
+            if flag_output:
+                dict_out['numelecs'] = numelecs
+                dict_out['N_mp'] = N_mp
+
+                sio.savemat('output.mat', dict_out)
             # Perform regeneration if needed
             if secelec.wspecies.getn() > N_mp_max:
                 dict_out_temp = {}
-                print('Number of macroparticles: %d' %(secelec.wspecies.getn()+elecb.wspecies.getn()))
+                print('Number of macroparticles: %d' %(secelec.wspecies.getn()))
                 print('MAXIMUM LIMIT OF MPS HAS BEEN RACHED')
                     
                 perform_regeneration(N_mp_target, secelec.wspecies, sec)
      
-            # Save stuff if checkpoint
+                # Save stuff if checkpoint
                 if flag_checkpointing and np.any(checkpoints == b_pass + b_pass_prev) and b_pass>1:
                     dict_out_temp = {}
                     print('Saving a checkpoint!')
@@ -349,39 +374,32 @@ def warp_pyecloud_dipole(z_length = None, nx = None, ny = None, nz =None, n_bunc
                     dict_out_temp['uy_mp'] = np.concatenate((secelec.wspecies.getuy(),elecb.wspecies.getuy()))
                     dict_out_temp['uz_mp'] = np.concatenate((secelec.wspecies.getuz(),elecb.wspecies.getuz()))
                     dict_out_temp['w_mp'] = np.concatenate((secelec_w,elecb.wspecies.getw()))
-                if flag_output:
-                    dict_out_temp['numelecs'] = numelecs
-                    dict_out_temp['N_mp'] = N_mp
+                    if flag_output:
+                        dict_out_temp['numelecs'] = numelecs
+                        dict_out_temp['N_mp'] = N_mp
 
                     dict_out_temp['b_pass'] = b_pass + b_pass_prev
 
                     filename = 'temp_mps_info.mat'
 
-                if os.path.exists(filename):
-                    os.remove(filename)
-
-                sio.savemat(filname, dict_out_temp)
+                    sio.savemat(filename, dict_out_temp)
 
             print('===========================')
             print('Bunch passage: %d' %(b_pass+b_pass_prev))
             print('Number of electrons in the dipole: %d' %(np.sum(secelec.wspecies.getw())+np.sum(elecb.wspecies.getw())))
             print('Number of macroparticles: %d' %(secelec.wspecies.getn()+elecb.wspecies.getn()))
- 
+            if b_pass > 1:
+                print('Previous passage took %ds' %t_pass)
         if n_step%ntsteps_p_bunch/ntsteps_p_bunch*100>perc:
             print('%d%% of bunch passage' %perc)
             perc = perc+10
 
-        #if n_step%10==0:
-        #    print('Number of macroparticles beam: %d' %(beam.wspecies.getn()))
-        #    print('Number of macroparticles: %d' %(secelec.wspecies.getn()+elecb.wspecies.getn()))
-
-
-    # Perform a step
+        # Perform a step
         sys.stdout = text_trap
         step(1)
         sys.stdout = original
 
-    # Store stuff to be saved
+        # Store stuff to be saved
         if flag_output:
             secelec_w = secelec.wspecies.getw()
             elecb_w = elecb.wspecies.getw()
@@ -401,7 +419,7 @@ def warp_pyecloud_dipole(z_length = None, nx = None, ny = None, nz =None, n_bunc
     
 
     # Delete checkpoint if found
-    if os.path.exists('temp_mps_info.mat'):
+    if flag_checkpointing and os.path.exists('temp_mps_info.mat'):
         os.remove('temp_mps_info.mat')
 
     print('Run terminated in %ds' %totalt)
