@@ -9,11 +9,13 @@ from run_in_separate_process import run_in_separate_process
 nz = 100
 N_mp_max_slice = 60000
 init_num_elecs_slice = 2*10**5
-dh = 3.e-4/2
+dh = 3.e-4
 width = 2*35e-3
 height = 2*18e-3
-nx = int(np.ceil(width/dh))
-ny = int(np.ceil(height/dh))
+r = 23e-3
+
+nx = int(np.ceil(4*r/dh))
+ny = int(np.ceil(4*r/dh))
 
 # Compute sigmas
 nemittx = 2.5e-6
@@ -32,7 +34,7 @@ kwargs = {'enable_trap': enable_trap,
 	'ny': ny, 
 	'nz': nz,
     'dh_t': dh, 
-	'n_bunches': 50,
+	'n_bunches': 1,
     'b_spac' : 25e-9,
     'beam_gamma': beam_gamma, 
 	'sigmax': sigmax,
@@ -46,7 +48,7 @@ kwargs = {'enable_trap': enable_trap,
 	'dt': 25e-12,
     'pyecloud_fact_clean': 1e-6,
 	'pyecloud_fact_split': 1.5,
-    'chamber_type': 'rect', 
+    'chamber_type': 'circle', 
     'flag_save_video': True,
     'Emax': 332., 
     'del_max': 1.7,
@@ -62,10 +64,9 @@ kwargs = {'enable_trap': enable_trap,
     'flag_output': True,
     'bunch_macro_particles': 1e7,
     't_offs': 2.5e-9,
-    'width' : width,
-    'height' : height,
-    'output_name': 'warp_out.mat',
-    'flag_relativ_tracking': True
+    'output_name': 'warp_out_circle.mat',
+    'flag_relativ_tracking': True,
+    'r':  r
 }
 
 if run_in_other_process:
