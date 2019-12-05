@@ -36,9 +36,9 @@ ze_dipo = 500*unit
 r = 23.e-3
 h = 18.e-3
 
-nx = 16
-ny = 16
-nz = 150
+nx = 5
+ny = 5
+nz = 5
 
 xmin = -r
 xmax = r
@@ -54,7 +54,7 @@ sigmat= 1.000000e-09/4.
 sigmaz = sigmat*299792458.
 b_spac = 25e-9
 t_offs = b_spac-6*sigmat
-n_bunches = 2
+n_bunches = 1
 
 beam_number_per_cell_each_dim = [1, 1, 1]
 
@@ -65,7 +65,7 @@ beam_number_per_cell_each_dim = [1, 1, 1]
 # --- beam
 beam_uz = 479.
 bunch_physical_particles  = 2.5e11
-bunch_w = 1e6
+bunch_w = 1e10
 bunch_macro_particles = bunch_physical_particles/bunch_w
 #######################################################
 # compute beam size from normalized emittance and beta
@@ -353,7 +353,7 @@ for n_step in range(tot_nsteps):
         print('%d%% of bunch passage' %perc)
         perc = perc+10
     original = sys.stdout
-    sys.stdout = text_trap
+    #sys.stdout = text_trap
     step(1)
     numelecs[n_step] = np.sum(secelec.wspecies.getw())+np.sum(elecb.wspecies.getw())
     elecs_density[n_step,:,:,:] = secelec.wspecies.get_density()+ elecb.wspecies.get_density()
