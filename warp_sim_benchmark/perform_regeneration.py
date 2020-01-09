@@ -16,8 +16,8 @@ def perform_regeneration(target_N_mp, wsp, Sec):
     new_nel_mp_ref = chrg / target_N_mp  
     Sec.set_nel_mp_ref(new_nel_mp_ref)
 
-    print('New nel_mp_ref = %d'%(Sec.pyecloud_nel_mp_ref))
-    print('Start SOFT regeneration. N_mp=%d Nel_tot=%1.2e, En_tot = %1.2e'%(N_mp, chrg, erg))
+    print 'New nel_mp_ref = %d'%(Sec.pyecloud_nel_mp_ref)
+    print 'Start SOFT regeneration. N_mp=%d Nel_tot=%1.2e, En_tot = %1.2e'%(N_mp, chrg, erg)
                 
     # Compute the death probability         
     death_prob = float(N_mp - target_N_mp) / float(N_mp)
@@ -43,7 +43,7 @@ def perform_regeneration(target_N_mp, wsp, Sec):
     # Compute new number of MPs
     N_mp = wsp.getn()
 
-    print('Applied correction factor = %e'%correct_fact)
+    print 'Applied correction factor = %e'%correct_fact
     chrg = chrg = np.sum(wsp.getw()) 
     erg = np.sum(0.5 / np.abs(charge / mass) * wsp.getw() * (wsp.getvx() * wsp.getvx() + wsp.getvy() * wsp.getvy() + wsp.getvz() * wsp.getvz()))        
-    print('Done SOFT regeneration. N_mp=%d Nel_tot=%1.2e En_tot=%1.2e'%(N_mp, chrg, erg))
+    print 'Done SOFT regeneration. N_mp=%d Nel_tot=%1.2e En_tot=%1.2e'%(N_mp, chrg, erg)

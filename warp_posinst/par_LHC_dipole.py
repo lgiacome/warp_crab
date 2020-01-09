@@ -1,19 +1,22 @@
+import sys
+import os
+
+BIN = os.path.expanduser("../")
+if BIN not in sys.path:
+    sys.path.append(BIN)
+
 import numpy as np
 import numpy.random as random
 #from pywarpx import picmi
 from warp import picmi
 from scipy.stats import gaussian_kde
 from warp.particles.Secondaries import *
+from warp.particles.species import listofallspecies
 import matplotlib.pyplot as plt
+import parser
 import scipy.io as sio
 from io import BytesIO as StringIO
 from mpi4py import MPI
-
-# Construct PyECLOUD secondary emission object
-import PyECLOUD.sec_emission_model_ECLOUD as seec
-sey_mod = seec.SEY_model_ECLOUD(Emax=300., del_max=1.8, R0=0.7, E_th=30,
-        sigmafit=1.09, mufit=1.66,
-        secondary_angle_distribution='cosine_3D')
 
 ##########################
 # physics parameters
@@ -29,16 +32,12 @@ unit = 1e-3
 ##########################
 
 # --- grid
-dh = .3e-3*10
+dh = .9e-2
 
 zs_dipo = -500*unit
 ze_dipo = 500*unit
 r = 23.e-3
 h = 18.e-3
-
-nx = 5
-ny = 5
-nz = 5
 
 xmin = -r
 xmax = r
@@ -47,7 +46,9 @@ ymax = r
 zmin = zs_dipo-50*unit
 zmax = ze_dipo+50*unit
 
-print((zmax-zmin)/nz)
+nx = (xmax-xmin)/dh
+ny = (xmax-xmin)/dh
+nz = (xmax-xmin)/dh
 
 l = zmax-zmin
 sigmat= 1.000000e-09/4.
@@ -65,7 +66,7 @@ beam_number_per_cell_each_dim = [1, 1, 1]
 # --- beam
 beam_uz = 479.
 bunch_physical_particles  = 2.5e11
-bunch_w = 1e10
+bunch_w = 1e9
 bunch_macro_particles = bunch_physical_particles/bunch_w
 #######################################################
 # compute beam size from normalized emittance and beta
@@ -98,7 +99,7 @@ electron_background_dist = picmi.UniformDistribution(
                                                      upper_bound = [ r,
                                                                      h,
                                                                      ze_dipo],
-                                                     density = 1.e8/0.0014664200235342726
+                                                     density = 1.e5/0.0014664200235342726
                                                      )
 
 elecb = picmi.Species(particle_type = 'electron',
@@ -170,12 +171,12 @@ sim = picmi.Simulation(solver = solver,
 
 sim.conductors = pipe+upper_box+lower_box
 
-beam_layout = picmi.PseudoRandomLayout(n_macroparticles = 10**5, seed = 3)
+beam_layout = picmi.PseudoRandomLayout(n_macroparticles = 10**2, seed = 3)
 
 sim.add_species(beam, layout=beam_layout,
                 initialize_self_field = solver=='EM')
 
-elecb_layout = picmi.PseudoRandomLayout(n_macroparticles = 10**5, seed = 3)
+elecb_layout = picmi.PseudoRandomLayout(n_macroparticles = 10**2, seed = 3)
 
 sim.add_species(elecb, layout=elecb_layout,
                 initialize_self_field = solver=='EM')
@@ -213,16 +214,57 @@ picmi.warp.installuserinjection(nonlinearsource)
 ##########################
 # simulation run
 ##########################
+print('cane')
 sim.step(1)
+print('gatto')
 solver.solver.installconductor(sim.conductors, dfill = picmi.warp.largepos)
 sim.step(1)
 
 pp = warp.ParticleScraper(sim.conductors,lsavecondid=1,lsaveintercept=1,lcollectlpdata=1)
 
-sec=Secondaries(conductors=sim.conductors,
-                l_usenew=1, pyecloud_secemi_object=sey_mod,
-                pyecloud_nel_mp_ref=1., pyecloud_fact_clean=1e-6,
-                pyecloud_fact_split=1.5)
+####################################
+# Set material parameters from file
+####################################
+
+def set_params_user(maxsec, matnum):
+    dict = parser.pos2dic('LHC_inj_72bx5.in')
+    
+    posC.matsurf = dict['matsurf']
+    posC.iprob = dict['iprob']
+    
+    posC.enpar = dict['enpar']
+    
+    posC.pnpar= dict['pnpar']
+    
+    posC.dtspk = dict['dtspk']
+    posC.dtotpk = dict['dtotpk']
+    posC.pangsec = dict['pangsec']
+    posC.pr = dict['pr']
+    posC.sige = dict['sige']
+    posC.Ecr = dict['Ecr']
+    posC.E0tspk = dict['E0tspk']
+    posC.E0epk = dict['E0epk']
+    posC.E0w = dict['E0w']
+    posC.rpar1 = dict['rpar'][0]
+    posC.rpar2 = dict['rpar'][1]
+    posC.tpar1 = dict['tpar'][0]
+    posC.tpar2 = dict['tpar'][1]
+    posC.tpar3 = dict['tpar'][2]
+    posC.tpar4 = dict['tpar'][3]
+    posC.tpar5 = dict['tpar'][4]
+    posC.tpar6 = dict['tpar'][5]
+    posC.epar1 = dict['epar'][0]
+    posC.epar2 = dict['epar'][1]
+    posC.P1rinf = dict['P1rinf']
+    posC.P1einf = dict['P1einf']
+    posC.P1epk = dict['P1epk']
+    posC.powts = dict['powts']
+    posC.powe = dict['powe']
+    posC.qr = dict['qr']
+
+
+sec=Secondaries(conductors=sim.conductors, set_params_user  = set_params_user,
+                l_usenew=1)
 sec.add(incident_species = elecb.wspecies,
         emitted_species  = secelec.wspecies,
         conductor        = sim.conductors)
@@ -251,7 +293,7 @@ def myplots(l_force=0):
         # why is this needed?
         em.clearconductors()
         em.installconductor(sim.conductors, dfill = picmi.warp.largepos)
-    if l_force or pw.top.it%10==0:
+    if l_force or pw.top.it%1==0:
         pw.fma()
         '''
         if 1==1: #mysolver=='ES':
@@ -278,7 +320,7 @@ def myplots(l_force=0):
         #pw.limits(xmin,xmax,ymin,ymax)
         #pw.plotegrd(ie,component = 'y', iz = 0, view = 6)
         '''
-    if l_force or 0==0:#pw.top.it%1==0:
+    if pw.top.it%10==0:
         plt.close()
         (Nx,Ny,Nz) = np.shape(secelec.wspecies.get_density())
         fig, axs = plt.subplots(1, 2,figsize=(12, 4.5))
@@ -295,10 +337,8 @@ def myplots(l_force=0):
         axs[1].set_ylabel('y [m]')
         axs[1].set_title('e- density')
         fig.colorbar(im2, ax=axs[1])
-        n_step = top.time/top.dt
-        figname = 'images/%d.png' %n_step
+        figname = 'images/%d.png' %pw.top.it
         plt.savefig(figname)
-        print('plot')
     #plt.draw()
     #plt.pause(1e-8)
         
@@ -324,16 +364,14 @@ def myplots2(l_force=0):
             solver.solver.pfez(direction=1,l_transpose=1,view=10)
         pw.refresh()
 
-#pw.installafterstep(myplots)
+pw.installafterstep(myplots)
 
-#myplots(1)
+myplots(1)
 
 ntsteps_p_bunch = b_spac/top.dt
 n_step = 0
 tot_nsteps = int(round(b_spac*n_bunches/top.dt))
 numelecs = np.zeros(tot_nsteps)
-elecs_density = np.zeros((tot_nsteps,nx+1,ny+1,nz+1))
-beam_density = np.zeros((tot_nsteps,nx+1,ny+1,nz+1))
 total = np.zeros(tot_nsteps)
 b_pass = 0
 perc = 10
@@ -342,10 +380,15 @@ original = sys.stdout
 text_trap = StringIO()
 #sys.stdout = text_trap
 t0 = time.time()
+t2 = time.time()
 for n_step in range(tot_nsteps):
     if n_step/ntsteps_p_bunch > b_pass:
         b_pass+=1
         perc = 10
+	t2new = time.time()
+	if b_pass > 1:
+	    print('Previous passage took %dsec' %(t2-t2new))
+	t2 = t2new
         print('===========================')
         print('Bunch passage: %d' %b_pass)
         print('Number of electrons in the dipole: %d' %(np.sum(secelec.wspecies.getw())+np.sum(elecb.wspecies.getw())))
@@ -353,24 +396,18 @@ for n_step in range(tot_nsteps):
         print('%d%% of bunch passage' %perc)
         perc = perc+10
     original = sys.stdout
-    #sys.stdout = text_trap
+    sys.stdout = text_trap
     step(1)
     numelecs[n_step] = np.sum(secelec.wspecies.getw())+np.sum(elecb.wspecies.getw())
-    elecs_density[n_step,:,:,:] = secelec.wspecies.get_density()+ elecb.wspecies.get_density()
-    beam_density[n_step,:,:,:] = beam.wspecies.get_density()
     sys.stdout = original
-    if n_step%1000==0:
+    if n_step%10==0:
         dict_out['numelecs'] = numelecs
-        dict_out['elecs_density'] = elecs_density
-        dict_out['beam_density'] = beam_density
-        sio.savemat('output0.mat',dict_out)
+        sio.savemat('output.mat',dict_out)
 t1 = time.time()
 totalt = t1-t0
 dict_out['numelecs'] = numelecs
-dict_out['elecs_density'] = elecs_density
-dict_out['beam_density'] = beam_density
 dict_out['total'] = total
-sio.savemat('output0.mat',dict_out)
+sio.savemat('output.mat',dict_out)
 
 print('Run terminated in %ds' %totalt)
 
